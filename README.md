@@ -18,12 +18,12 @@ limitations under the License.
 
 # Legate Sparse
 
-Legate Sparse is a [Legate](https://github.com/nv-legate/legate.core) library
+Legate Sparse is a [Legate](https://github.com/nv-legate/legate) library
 that aims to provide a distributed and accelerated drop-in replacement for the
 [scipy.sparse](https://docs.scipy.org/doc/scipy/reference/sparse.html) library
-on top of the [Legate](https://github.com/nv-legate/legate.core) runtime. 
+on top of the [Legate](https://github.com/nv-legate/legate) runtime. 
 Legate Sparse interoperates with 
-[cuPyNumeric](https://github.com/nv-legate/cupynumeric/tree/main),
+[cuPyNumeric](https://github.com/nv-legate/cupynumeric),
 a distributed and accelerated drop-in replacement 
 for [NumPy](https://numpy.org/doc/stable/reference/index.html#reference), to
 enable writing programs that operate on distributed dense and sparse arrays.
@@ -42,8 +42,8 @@ an issue and give us a summary of its usage.
 To use Legate Sparse, `legate` and `cupynumeric` libraries have to be installed. 
 They can be installed either by pulling the respective conda packages 
 or by manually building from source. For more information, 
-see build instructions for [Legate](https://github.com/nv-legate/legate.core) 
-and [cuPyNumeric](https://github.com/nv-legate/cupynumeric/tree/main).
+see build instructions for [Legate](https://github.com/nv-legate/legate) 
+and [cuPyNumeric](https://github.com/nv-legate/cupynumeric).
 
 Follow the steps in this section.
 
@@ -66,7 +66,7 @@ contains methods and types found in `scipy.sparse`. Note that the module is impo
 and not `legate.sparse`. Here is an example program saved as `main.py`. 
 
 For more details on how to run legate programs, check 
-our [documentation](https://docs.nvidia.com/cupynumeric/24.06/).
+our [documentation](https://docs.nvidia.com/cupynumeric).
 To run the application on a single GPU, use this command:
 
 `legate --gpus 1 ./main.py`
