@@ -1,4 +1,4 @@
-# Copyright 2022 NVIDIA Corporation
+# Copyright 2022-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cunumeric as np
+import cupynumeric as np
 import pytest
 import scipy.io as sci_io
 from utils.common import test_mtx_files
 
-import sparse.io as legate_io
+# import legate_sparse as sparse
+import legate_sparse.io as legate_io
 
 
 @pytest.mark.parametrize("filename", test_mtx_files)

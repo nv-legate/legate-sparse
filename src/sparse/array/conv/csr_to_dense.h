@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,21 +23,21 @@
 namespace sparse {
 
 struct CSRToDenseArgs {
-  const legate::Store& A_vals;
-  const legate::Store& B_pos;
-  const legate::Store& B_crd;
-  const legate::Store& B_vals;
+  const legate::PhysicalStore& A_vals;
+  const legate::PhysicalStore& B_pos;
+  const legate::PhysicalStore& B_crd;
+  const legate::PhysicalStore& B_vals;
 };
 
 class CSRToDense : public SparseTask<CSRToDense> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_CSR_TO_DENSE;
-  static void cpu_variant(legate::TaskContext& ctx);
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_TO_DENSE};
+  static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
-  static void omp_variant(legate::TaskContext& ctx);
+  static void omp_variant(legate::TaskContext ctx);
 #endif
 #ifdef LEGATE_USE_CUDA
-  static void gpu_variant(legate::TaskContext& context);
+  static void gpu_variant(legate::TaskContext context);
 #endif
 };
 

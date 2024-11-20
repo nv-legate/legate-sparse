@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,13 @@
 
 #pragma once
 
-#include "core/mapping/mapping.h"
+#include "legate/mapping/mapping.h"
 
 namespace sparse {
 
 class LegateSparseMapper : public legate::mapping::Mapper {
  public:
-  LegateSparseMapper();
-  virtual ~LegateSparseMapper(void) {}
-
- public:
   // Virtual mapping functions of LegateMapper that need to be overridden.
-  virtual void set_machine(const legate::mapping::MachineQueryInterface* machine) override;
   virtual legate::mapping::TaskTarget task_target(
     const legate::mapping::Task& task,
     const std::vector<legate::mapping::TaskTarget>& options) override;
@@ -35,9 +30,6 @@ class LegateSparseMapper : public legate::mapping::Mapper {
     const legate::mapping::Task& task,
     const std::vector<legate::mapping::StoreTarget>& options) override;
   virtual legate::Scalar tunable_value(legate::TunableID tunable_id) override;
-
- private:
-  const legate::mapping::MachineQueryInterface* machine;
 };
 
 }  // namespace sparse

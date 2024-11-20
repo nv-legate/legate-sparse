@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct GetCSRDiagonalImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
-  using VAL_TY   = legate_type_of<VAL_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
+  using VAL_TY   = type_of<VAL_CODE>;
 
   void operator()(const AccessorWO<VAL_TY, 1>& diag,
                   const AccessorRO<Rect<1>, 1>& pos,
@@ -36,13 +36,15 @@ struct GetCSRDiagonalImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
     for (coord_t i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
       diag[i] = 0.0;
       for (size_t j_pos = pos[i].lo; j_pos < pos[i].hi + 1; j_pos++) {
-        if (crd[j_pos] == i) { diag[i] = vals[j_pos]; }
+        if (crd[j_pos] == i) {
+          diag[i] = vals[j_pos];
+        }
       }
     }
   }
 };
 
-/*static*/ void GetCSRDiagonal::omp_variant(TaskContext& context)
+/*static*/ void GetCSRDiagonal::omp_variant(TaskContext context)
 {
   get_csr_diagonal_template<VariantKind::OMP>(context);
 }

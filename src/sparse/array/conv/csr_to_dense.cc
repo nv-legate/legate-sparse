@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct CSRToDenseImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
-  using VAL_TY   = legate_type_of<VAL_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
+  using VAL_TY   = type_of<VAL_CODE>;
 
   void operator()(const AccessorWO<VAL_TY, 2>& A_vals,
                   const AccessorRO<Rect<1>, 1>& B_pos,
@@ -34,7 +34,9 @@ struct CSRToDenseImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
   {
     // Initialize the output array.
     for (INDEX_TY i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
-      for (INDEX_TY j = rect.lo[1]; j < rect.hi[1] + 1; j++) { A_vals[{i, j}] = 0.0; }
+      for (INDEX_TY j = rect.lo[1]; j < rect.hi[1] + 1; j++) {
+        A_vals[{i, j}] = 0.0;
+      }
     }
     // Do the conversion.
     for (INDEX_TY i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
@@ -46,7 +48,7 @@ struct CSRToDenseImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
   }
 };
 
-/*static*/ void CSRToDense::cpu_variant(TaskContext& context)
+/*static*/ void CSRToDense::cpu_variant(TaskContext context)
 {
   csr_to_dense_template<VariantKind::CPU>(context);
 }

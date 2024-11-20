@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright 2022 NVIDIA Corporation
+# Copyright 2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@
 # - User Options  ------------------------------------------------------------
 
 option(BUILD_SHARED_LIBS "Build legate sparse shared libraries" ON)
-option(legate_sparse_EXCLUDE_LEGATE_CORE_FROM_ALL "Exclude legate.core targets from Legate Sparse's 'all' target" OFF)
+option(legate_sparse_EXCLUDE_LEGATE_FROM_ALL "Exclude legate targets from Legate Sparse's 'all' target" OFF)
 
 ##############################################################################
 # - Project definition -------------------------------------------------------
 
 # TODO (rohany): Do we need something like this for Legate Sparse?
 # Write the version header
-# rapids_cmake_write_version_file(include/cunumeric/version_config.hpp)
+# rapids_cmake_write_version_file(include/cupynumeric/version_config.hpp)
 
 # Needed to integrate with LLVM/clang tooling
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -52,25 +52,32 @@ endif()
 # - Dependencies -------------------------------------------------------------
 
 # add third party dependencies using CPM
-rapids_cpm_init()
+rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
+#find_package(legate REQUIRED)
+#TODO: we don't need cupynumeric? we assume it's there?
+#find_package(legate_cupynumeric REQUIRED)
 
 option(Legion_USE_CUDA "Use CUDA" ON)
 option(Legion_USE_OpenMP "Use OpenMP" ${OpenMP_FOUND})
-option(Legion_BOUNDS_CHECKS "Build cuNumeric with bounds checks (expensive)" OFF)
+option(Legion_BOUNDS_CHECKS "Build legate.sparse with bounds checks (expensive)" OFF)
+
+
+#################
+# From cupynumeric:
 
 ###
-# If we find legate.core already configured on the system, it will report
+# If we find legate already configured on the system, it will report
 # whether it was compiled with bounds checking (Legion_BOUNDS_CHECKS),
 # CUDA (Legion_USE_CUDA), and OpenMP (Legion_USE_OpenMP).
 #
-# We use the same variables as legate.core because we want to enable/disable
-# each of these features based on how legate.core was configured (it doesn't
-# make sense to build cuNumeric's CUDA bindings if legate.core wasn't built
+# We use the same variables as legate because we want to enable/disable
+# each of these features based on how legate was configured (it doesn't
+# make sense to build cupynumeric's CUDA bindings if legate wasn't built
 # with CUDA support).
 ###
-include(cmake/thirdparty/get_legate_core.cmake)
+include(cmake/thirdparty/get_legate.cmake)
 
 if(Legion_USE_CUDA)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/cuda_arch_helpers.cmake)
@@ -79,7 +86,7 @@ if(Legion_USE_CUDA)
   # Needs to run before `enable_language(CUDA)`
   rapids_cuda_init_architectures(legate_sparse)
   enable_language(CUDA)
-  # Since Legate Sparseonly enables CUDA optionally we need to manually include
+  # Since legate_sparse only enables CUDA optionally we need to manually include
   # the file that rapids_cuda_init_architectures relies on `project` calling
   if(CMAKE_PROJECT_legate_sparse_INCLUDE)
     include("${CMAKE_PROJECT_legate_sparse_INCLUDE}")
@@ -99,8 +106,11 @@ if(Legion_USE_CUDA)
   include(cmake/thirdparty/get_nccl.cmake)
 endif()
 
-##############################################################################
-# - Legate Sparse ------------------------------------------------------------
+# End From cupynumeric
+#################
+
+#################
+# Sources
 
 set(legate_sparse_SOURCES "")
 set(legate_sparse_CXX_DEFS "")
@@ -111,112 +121,70 @@ set(legate_sparse_CUDA_OPTIONS "")
 include(cmake/Modules/set_cpu_arch_flags.cmake)
 set_cpu_arch_flags(legate_sparse_CXX_OPTIONS)
 
+
 list(APPEND legate_sparse_SOURCES
-  src/quantum/quantum.cc
-  src/sparse/array/conv/coo_to_dense.cc
-  src/sparse/array/conv/csc_to_dense.cc
-  src/sparse/array/conv/csr_to_dense.cc
-  src/sparse/array/conv/dense_to_csc.cc
+  src/sparse/projections.cc
+
+  src/sparse/mapper/mapper.cc
+
   src/sparse/array/conv/dense_to_csr.cc
+  src/sparse/array/conv/csr_to_dense.cc
   src/sparse/array/conv/pos_to_coordinates.cc
-  src/sparse/array/conv/sorted_coords_to_counts.cc
-  src/sparse/array/csc/sddmm.cc
-  src/sparse/array/csc/spmm.cc
-  src/sparse/array/csc/spmv.cc
-  src/sparse/array/csr/add.cc
+
   src/sparse/array/csr/get_diagonal.cc
-  src/sparse/array/csr/mult.cc
-  src/sparse/array/csr/mult_dense.cc
-  src/sparse/array/csr/sddmm.cc
-  src/sparse/array/csr/spgemm_csr_csr_csc.cc
-  src/sparse/array/csr/spgemm_csr_csr_csr.cc
-  src/sparse/array/csr/spmm.cc
   src/sparse/array/csr/spmv.cc
-  src/sparse/array/csr/tropical_spmv.cc
-  src/sparse/array/util/scale_rect.cc
+  src/sparse/array/csr/spgemm_csr_csr_csr.cc
+  
   src/sparse/array/util/unzip_rect.cc
   src/sparse/array/util/zip_to_rect.cc
-  src/sparse/integrate/runge_kutta.cc
+
+  src/sparse/partition/fast_image_partition.cc
+
   src/sparse/io/mtx_to_coo.cc
-  src/sparse/mapper/mapper.cc
   src/sparse/linalg/axpby.cc
-  src/sparse/partition/bounds_from_partitioned_coordinates.cc
-  src/sparse/partition/fast_image_range.cc
-  src/sparse/projections.cc
-  src/sparse/sort/sort.cc
-  src/sparse/spatial/euclidean_distance.cc
-  src/sparse/util/upcast_future.cc
 )
 
 if(Legion_USE_OpenMP)
   list(APPEND legate_sparse_SOURCES
-    src/quantum/quantum_omp.cc
-    src/sparse/array/conv/csc_to_dense_omp.cc
-    src/sparse/array/conv/csr_to_dense_omp.cc
-    src/sparse/array/conv/dense_to_csc_omp.cc
     src/sparse/array/conv/dense_to_csr_omp.cc
+    src/sparse/array/conv/csr_to_dense_omp.cc
     src/sparse/array/conv/pos_to_coordinates_omp.cc
-    src/sparse/array/conv/sorted_coords_to_counts_omp.cc
-    src/sparse/array/csc/sddmm_omp.cc
-    src/sparse/array/csc/spmm_omp.cc
-    src/sparse/array/csc/spmv_omp.cc
-    src/sparse/array/csr/add_omp.cc
+
     src/sparse/array/csr/get_diagonal_omp.cc
-    src/sparse/array/csr/mult_omp.cc
-    src/sparse/array/csr/mult_dense_omp.cc
-    src/sparse/array/csr/sddmm_omp.cc
-    src/sparse/array/csr/spgemm_csr_csr_csc_omp.cc
-    src/sparse/array/csr/spgemm_csr_csr_csr_omp.cc
-    src/sparse/array/csr/spmm_omp.cc
     src/sparse/array/csr/spmv_omp.cc
-    src/sparse/array/csr/tropical_spmv_omp.cc
-    src/sparse/array/util/scale_rect_omp.cc
+    src/sparse/array/csr/spgemm_csr_csr_csr_omp.cc
+
     src/sparse/array/util/unzip_rect_omp.cc
     src/sparse/array/util/zip_to_rect_omp.cc
-    src/sparse/integrate/runge_kutta_omp.cc
+
     src/sparse/linalg/axpby_omp.cc
-    src/sparse/partition/bounds_from_partitioned_coordinates_omp.cc
-    src/sparse/partition/fast_image_range_omp.cc
-    src/sparse/sort/sort_omp.cc
-    src/sparse/spatial/euclidean_distance_omp.cc
   )
 endif()
 
 if(Legion_USE_CUDA)
   list(APPEND legate_sparse_SOURCES
-    src/sparse/array/conv/csc_to_dense.cu
-    src/sparse/array/conv/csr_to_dense.cu
-    src/sparse/array/conv/dense_to_csc.cu
+    src/sparse/cudalibs.cu 
+
     src/sparse/array/conv/dense_to_csr.cu
+    src/sparse/array/conv/csr_to_dense.cu
     src/sparse/array/conv/pos_to_coordinates.cu
-    src/sparse/array/conv/sorted_coords_to_counts.cu
-    src/sparse/array/csc/sddmm.cu
-    src/sparse/array/csc/spmm.cu
-    src/sparse/array/csc/spmv.cu
-    src/sparse/array/csr/add.cu
+
     src/sparse/array/csr/get_diagonal.cu
-    src/sparse/array/csr/mult.cu
-    src/sparse/array/csr/mult_dense.cu
-    src/sparse/array/csr/sddmm.cu
-    src/sparse/array/csr/spgemm_csr_csr_csc.cu
-    src/sparse/array/csr/spgemm_csr_csr_csr.cu
-    src/sparse/array/csr/spmm.cu
     src/sparse/array/csr/spmv.cu
-    src/sparse/array/csr/tropical_spmv.cu
-    src/sparse/array/util/scale_rect.cu
+    src/sparse/array/csr/spgemm_csr_csr_csr.cu
+
     src/sparse/array/util/unzip_rect.cu
     src/sparse/array/util/zip_to_rect.cu
-    src/sparse/cudalibs.cu
-    src/sparse/integrate/runge_kutta.cu
+    
+    src/sparse/partition/fast_image_partition.cu
+
     src/sparse/linalg/axpby.cu
-    src/sparse/partition/bounds_from_partitioned_coordinates.cu
-    src/sparse/partition/fast_image_range.cu
-    src/sparse/sort/sort.cu
-    src/sparse/spatial/euclidean_distance.cu
   )
 endif()
 
+
 list(APPEND legate_sparse_SOURCES
+  
   # This must always be the last file!
   # It guarantees we do our registration callback
   # only after all task variants are recorded
@@ -240,11 +208,19 @@ list(APPEND legate_sparse_CXX_OPTIONS -Wno-deprecated-declarations)
 list(APPEND legate_sparse_CUDA_OPTIONS -Wno-deprecated-declarations)
 
 add_library(legate_sparse ${legate_sparse_SOURCES})
-add_library(legate_sparse::legate_sparse ALIAS legate_sparse)
+if(NOT TARGET legate_sparse::legate_sparse)
+  add_library(legate_sparse::legate_sparse ALIAS legate_sparse)
+endif()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(platform_rpath_origin "\$ORIGIN")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(platform_rpath_origin "@loader_path")
+endif ()
 
 set_target_properties(legate_sparse
-           PROPERTIES BUILD_RPATH                         "\$ORIGIN"
-                      INSTALL_RPATH                       "\$ORIGIN"
+           PROPERTIES BUILD_RPATH                         "${platform_rpath_origin}"
+                      INSTALL_RPATH                       "${platform_rpath_origin}"
                       CXX_STANDARD                        17
                       CXX_STANDARD_REQUIRED               ON
                       POSITION_INDEPENDENT_CODE           ON
@@ -254,13 +230,18 @@ set_target_properties(legate_sparse
                       LIBRARY_OUTPUT_DIRECTORY            lib)
 
 target_link_libraries(legate_sparse
-   PUBLIC legate::core
+   PUBLIC legate::legate
           $<TARGET_NAME_IF_EXISTS:NCCL::NCCL>
-  PRIVATE
+          # do we need to put this dependency here?
+          # what is the correct target?
+          # cupynumeric::cupynumeric
+  PRIVATE 
           # Add Conda library and include paths
           $<TARGET_NAME_IF_EXISTS:conda_env>
+          $<TARGET_NAME_IF_EXISTS:CUDA::cublas>
           $<TARGET_NAME_IF_EXISTS:CUDA::cusparse>
           $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>)
+
 
 # Change THRUST_DEVICE_SYSTEM for `.cpp` files
 if(Legion_USE_OpenMP)
@@ -279,11 +260,12 @@ target_compile_definitions(legate_sparse
   PUBLIC  "$<$<COMPILE_LANGUAGE:CXX>:${legate_sparse_CXX_DEFS}>"
           "$<$<COMPILE_LANGUAGE:CUDA>:${legate_sparse_CUDA_DEFS}>")
 
+
 target_include_directories(legate_sparse
   PRIVATE
-    $<BUILD_INTERFACE:${legate_sparse_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   INTERFACE
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:include/legate_sparse>
 )
 
 if(Legion_USE_CUDA)
@@ -309,6 +291,13 @@ rapids_cmake_install_lib_dir(lib_dir)
 install(TARGETS legate_sparse
         DESTINATION ${lib_dir}
         EXPORT legate-sparse-exports)
+
+install(
+  FILES src/sparse/sparse_c.h
+        #TODO: ?
+        #${CMAKE_CURRENT_BINARY_DIR}/include/cupynumeric/version_config.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legate_sprase)
+
 
 ##############################################################################
 # - install export -----------------------------------------------------------

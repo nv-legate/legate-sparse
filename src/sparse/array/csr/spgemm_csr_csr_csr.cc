@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE>
 struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorWO<nnz_ty, 1>& nnz,
                   const AccessorRO<Rect<1>, 1>& B_pos,
@@ -58,10 +58,14 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
     auto index_list  = index_list_buf.ptr(0);
     auto already_set = already_set_buf.ptr(0) - min;
 
+    // iterate over rows of A/B
     for (auto i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
       size_t index_list_size = 0;
+      // for every nonzero in row of B
       for (size_t kB = B_pos[i].lo; kB < B_pos[i].hi + 1; kB++) {
+        // index of the nonzero
         auto k = B_crd[kB];
+        // iterate over all column indices of C to find a match
         for (size_t jC = C_pos[k].lo; jC < C_pos[k].hi + 1; jC++) {
           auto j = C_crd[jC];
           if (!already_set[j]) {
@@ -72,11 +76,13 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
         }
       }
       nnz_ty row_nnzs = 0;
+      // count and reset
       for (auto index_loc = 0; index_loc < index_list_size; index_loc++) {
         auto j         = index_list[index_loc];
         already_set[j] = false;
         row_nnzs++;
       }
+      // save nnz count
       nnz[i] = row_nnzs;
     }
   }
@@ -84,8 +90,8 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
-  using VAL_TY   = legate_type_of<VAL_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
+  using VAL_TY   = type_of<VAL_CODE>;
 
   void operator()(const AccessorRW<Rect<1>, 1>& A_pos,
                   const AccessorWO<INDEX_TY, 1>& A_crd,
@@ -153,12 +159,12 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
   }
 };
 
-/*static*/ void SpGEMMCSRxCSRxCSRNNZ::cpu_variant(TaskContext& context)
+/*static*/ void SpGEMMCSRxCSRxCSRNNZ::cpu_variant(TaskContext context)
 {
   spgemm_csr_csr_csr_nnz_template<VariantKind::CPU>(context);
 }
 
-/*static*/ void SpGEMMCSRxCSRxCSR::cpu_variant(TaskContext& context)
+/*static*/ void SpGEMMCSRxCSRxCSR::cpu_variant(TaskContext context)
 {
   spgemm_csr_csr_csr_template<VariantKind::CPU>(context);
 }

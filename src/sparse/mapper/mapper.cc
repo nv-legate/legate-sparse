@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 #include "legate.h"
+#include "legate_defines.h"
+
 #include "sparse/sparse_c.h"
 #include "sparse/mapper/mapper.h"
 
@@ -25,10 +27,6 @@ using namespace legate::mapping;
 
 namespace sparse {
 
-LegateSparseMapper::LegateSparseMapper() {}
-
-void LegateSparseMapper::set_machine(const MachineQueryInterface* m) { machine = m; }
-
 TaskTarget LegateSparseMapper::task_target(const Task& task, const std::vector<TaskTarget>& options)
 {
   return *options.begin();
@@ -37,50 +35,17 @@ TaskTarget LegateSparseMapper::task_target(const Task& task, const std::vector<T
 std::vector<StoreMapping> LegateSparseMapper::store_mappings(
   const Task& task, const std::vector<StoreTarget>& options)
 {
-  if (task.task_id() == LEGATE_SPARSE_SPGEMM_CSR_CSR_CSC_COMM_COMPUTE) {
-    // If we're running on a GPU, then we need to map the output region
-    // into zero copy memory. We can check this by seeing if zero copy
-    // memory is an option for us to map tasks onto.
-    if (std::find(options.begin(), options.end(), StoreTarget::ZCMEM) != options.end()) {
-      auto& outputs = task.outputs();
-      auto& inputs  = task.inputs();
-      assert(outputs.size() + inputs.size() == 3);
-      std::vector<StoreMapping> mappings(3);
-      mappings[0] = StoreMapping::default_mapping(outputs[0], StoreTarget::ZCMEM);
-      mappings[1] = StoreMapping::default_mapping(inputs[0], options.front());
-      mappings[2] = StoreMapping::default_mapping(inputs[1], options.front());
-      return mappings;
-    }
-  }
-  // Just do the default thing for now.
-  auto& inputs = task.inputs();
+  const auto& inputs = task.inputs();
   std::vector<StoreMapping> mappings(inputs.size());
   for (size_t i = 0; i < inputs.size(); i++) {
-    mappings[i] = StoreMapping::default_mapping(inputs[i], options.front());
+    mappings[i] = StoreMapping::default_mapping(inputs[i].data(), options.front());
   }
-  return mappings;
+  return std::move(mappings);
 }
 
 Scalar LegateSparseMapper::tunable_value(legate::TunableID tunable_id)
 {
-  switch (tunable_id) {
-    case LEGATE_SPARSE_TUNABLE_NUM_PROCS: {
-      int32_t num_procs = 0;
-      if (!machine->gpus().empty())
-        num_procs = machine->gpus().size() * machine->total_nodes();
-      else if (!machine->omps().empty())
-        num_procs = machine->omps().size() * machine->total_nodes();
-      else
-        num_procs = machine->cpus().size() * machine->total_nodes();
-      return Scalar(num_procs);
-    }
-    case LEGATE_SPARSE_TUNABLE_NUM_GPUS: {
-      int32_t num_gpus = machine->gpus().size() * machine->total_nodes();
-      return Scalar(num_gpus);
-    }
-    default: break;
-  }
-  LEGATE_ABORT;
+  LEGATE_ABORT("Legate_Sparse does not use any tunables");
 }
 
 }  // namespace sparse

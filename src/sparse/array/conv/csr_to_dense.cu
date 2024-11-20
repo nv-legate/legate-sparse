@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,10 +31,14 @@ __global__ void CSRtoDenseKernel(size_t rows,
                                  AccessorRO<VAL_TY, 1> B_vals)
 {
   const auto idx = global_tid_1d();
-  if (idx >= rows) return;
+  if (idx >= rows) {
+    return;
+  }
   INDEX_TY i = idx + bounds.lo[0];
   // Initialize the row with all zeros.
-  for (INDEX_TY j = bounds.lo[1]; j < bounds.hi[1] + 1; j++) { A_vals[{i, j}] = 0.0; }
+  for (INDEX_TY j = bounds.lo[1]; j < bounds.hi[1] + 1; j++) {
+    A_vals[{i, j}] = 0.0;
+  }
   // Copy the non-zero values into place.
   for (INDEX_TY j_pos = B_pos[i].lo; j_pos < B_pos[i].hi + 1; j_pos++) {
     INDEX_TY j     = B_crd[j_pos];
@@ -47,8 +51,8 @@ struct CSRToDenseImpl<VariantKind::GPU> {
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(CSRToDenseArgs& args) const
   {
-    using INDEX_TY = legate_type_of<INDEX_CODE>;
-    using VAL_TY   = legate_type_of<VAL_CODE>;
+    using INDEX_TY = type_of<INDEX_CODE>;
+    using VAL_TY   = type_of<VAL_CODE>;
 
     auto& A_vals = args.A_vals;
     auto& B_pos  = args.B_pos;
@@ -56,7 +60,9 @@ struct CSRToDenseImpl<VariantKind::GPU> {
     auto& B_vals = args.B_vals;
 
     // Break out early if the iteration space partition is empty.
-    if (B_pos.domain().empty()) { return; }
+    if (B_pos.domain().empty()) {
+      return;
+    }
 
     auto stream = get_cached_stream();
 
@@ -91,7 +97,7 @@ struct CSRToDenseImpl<VariantKind::GPU> {
     // Allocate a buffer if we need to.
     void* workspacePtr = nullptr;
     if (bufSize > 0) {
-      Buffer<char, 1> buf({0, bufSize - 1}, Memory::GPU_FB_MEM);
+      Buffer<char, 1> buf(create_1d_extents(0, bufSize - 1), Memory::GPU_FB_MEM);
       workspacePtr = buf.ptr(0);
     }
     // Finally do the conversion.
@@ -102,11 +108,11 @@ struct CSRToDenseImpl<VariantKind::GPU> {
     CHECK_CUSPARSE(cusparseDestroySpMat(cusparse_B));
 #endif
 
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
   }
 };
 
-/*static*/ void CSRToDense::gpu_variant(TaskContext& context)
+/*static*/ void CSRToDense::gpu_variant(TaskContext context)
 {
   csr_to_dense_template<VariantKind::GPU>(context);
 }

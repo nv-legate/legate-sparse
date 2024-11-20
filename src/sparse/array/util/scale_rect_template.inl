@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,13 +32,15 @@ struct ScaleRect1Impl {
   void operator()(ScaleRect1Args& args) const
   {
     auto output = args.out.read_write_accessor<Rect<1>, 1>();
-    if (args.out.domain().empty()) return;
+    if (args.out.domain().empty()) {
+      return;
+    }
     ScaleRect1ImplBody<KIND>()(output, args.scale, args.out.shape<1>());
   }
 };
 
 template <VariantKind KIND>
-static void scale_rect_1_template(TaskContext& context)
+static void scale_rect_1_template(TaskContext context)
 {
   auto task  = context.task_;
   auto scale = task->futures[0].get_result<int64_t>();

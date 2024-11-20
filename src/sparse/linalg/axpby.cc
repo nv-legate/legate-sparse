@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ using namespace legate;
 
 template <Type::Code VAL_CODE, bool IS_ALPHA, bool NEGATE>
 struct AXPBYImplBody<VariantKind::CPU, VAL_CODE, IS_ALPHA, NEGATE> {
-  using VAL_TY = legate_type_of<VAL_CODE>;
+  using VAL_TY = type_of<VAL_CODE>;
 
   void operator()(const AccessorRW<VAL_TY, 1>& y,
                   const AccessorRO<VAL_TY, 1>& x,
@@ -32,7 +32,9 @@ struct AXPBYImplBody<VariantKind::CPU, VAL_CODE, IS_ALPHA, NEGATE> {
                   const Rect<1>& rect)
   {
     auto val = a[0] / b[0];
-    if (NEGATE) { val = static_cast<VAL_TY>(-1) * val; }
+    if (NEGATE) {
+      val = static_cast<VAL_TY>(-1) * val;
+    }
     for (coord_t i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
       if (IS_ALPHA) {
         y[i] = val * x[i] + y[i];
@@ -43,7 +45,7 @@ struct AXPBYImplBody<VariantKind::CPU, VAL_CODE, IS_ALPHA, NEGATE> {
   }
 };
 
-/*static*/ void AXPBY::cpu_variant(TaskContext& context)
+/*static*/ void AXPBY::cpu_variant(TaskContext context)
 {
   axpby_template<VariantKind::CPU>(context);
 }

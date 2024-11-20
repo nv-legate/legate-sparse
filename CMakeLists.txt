@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright 2022 NVIDIA Corporation
+# Copyright 2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,8 +44,10 @@ endif()
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
+set(rapids-cmake-version 24.04)
+set(rapids-cmake-sha "365322aca32fd6ecd7027f5d7ec7be50b7f3cc2a")
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/RAPIDS.cmake)
-  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-23.08/RAPIDS.cmake
+  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-${rapids-cmake-version}/RAPIDS.cmake
        ${CMAKE_BINARY_DIR}/RAPIDS.cmake)
 endif()
 include(${CMAKE_BINARY_DIR}/RAPIDS.cmake)
@@ -55,11 +57,11 @@ include(rapids-cuda)
 include(rapids-export)
 include(rapids-find)
 
-set(legate_sparse_version 23.09.00)
+###################################
+# Project
 
-# For now we want the optimization flags to match on both normal make and cmake
-# builds so we override the cmake defaults here for release, this changes
-# -O3 to -O2 and removes -DNDEBUG
+set(legate_sparse_version 24.11.00)
+
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CUDA_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
@@ -97,7 +99,7 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
       VERBATIM
     )
     foreach(_dep IN ITEMS legate_sparse legate_sparse_python
-                          legion_core legion_core_python
+                          legate legate_python
                           Legion LegionRuntime
                           Realm RealmRuntime
                           Regent)
@@ -108,3 +110,4 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
   endfunction()
   add_touch_legate_sparse_ninja_build_target()
 endif()
+

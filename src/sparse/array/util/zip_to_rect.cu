@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,9 @@ __global__ void zip_rect1_kernel(size_t elems,
                                  const AccessorRO<VAL, 1> hi)
 {
   const auto tid = global_tid_1d();
-  if (tid >= elems) return;
+  if (tid >= elems) {
+    return;
+  }
   const auto idx = tid + offset;
   out[idx]       = {lo[idx], hi[idx] - 1};
 }
@@ -46,11 +48,11 @@ struct ZipToRect1ImplBody<VariantKind::GPU, VAL> {
     auto elems  = rect.volume();
     auto blocks = get_num_blocks_1d(elems);
     zip_rect1_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo, output, lo, hi);
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
   }
 };
 
-/*static*/ void ZipToRect1::gpu_variant(TaskContext& context)
+/*static*/ void ZipToRect1::gpu_variant(TaskContext context)
 {
   zip_to_rect_1_template<VariantKind::GPU>(context);
 }

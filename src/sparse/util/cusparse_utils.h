@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #include "sparse/sparse.h"
 #include "sparse/util/cuda_help.h"
+#include "sparse/util/legate_utils.h"
 
 namespace sparse {
 
@@ -28,19 +29,44 @@ template <typename T>
 __global__ void convertGlobalPosToLocalIndPtr(size_t rows, const Legion::Rect<1>* pos, T* indptr)
 {
   const auto idx = global_tid_1d();
-  if (idx >= rows) return;
+  if (idx >= rows) {
+    return;
+  }
   // Offset each entry in pos down to the first element in pos to locally
   // index this piece of the CSR array.
   indptr[idx] = T(pos[idx].lo - pos[0].lo);
   // We also need to fill in the final rows+1 index of indptr to be the
   // total number of non-zeros. We'll have the first thread do this.
-  if (idx == 0) { indptr[rows] = T(pos[rows - 1].hi + 1 - pos[0].lo); }
+  if (idx == 0) {
+    indptr[rows] = T(pos[rows - 1].hi + 1 - pos[0].lo);
+  }
+}
+
+// save number of nonzeros per row in the partition based on crd image
+template <typename TS, typename TD>
+__global__ void convertImagePosToLocalIndPtr(
+  size_t image_crds, const TS* crds, const Legion::Rect<1>* pos, TS low_offset, TD* indptr)
+{
+  const auto idx = global_tid_1d();
+  if (idx >= image_crds) {
+    return;
+  }
+  TD row       = crds[idx];
+  TD local_row = row - low_offset;
+  // shift dy the lower bound of C pos domain
+  indptr[local_row] = TD(pos[local_row].hi - pos[local_row].lo + 1);
+  printf("[ %ld ] B ci: %ld, local B ci: %ld, C pos: [%ld, %ld]\n",
+         idx,
+         row,
+         row - low_offset,
+         pos[local_row].lo,
+         pos[local_row].hi);
 }
 
 // getPtrFromStore is a utility to extract a pointer of the right type
 // from a store.
 template <typename T, int DIM>
-void* getPtrFromStore(const legate::Store& store)
+void* getPtrFromStore(const legate::PhysicalStore& store)
 {
   auto dom = store.domain();
   if (store.is_writable() && store.is_readable()) {
@@ -105,9 +131,9 @@ inline cusparseIndexType_t cusparseIndexType<int64_t>()
 
 // makeCuSparseCSR creates a cusparse CSR matrix from input arrays.
 template <typename INDEX_TY = int64_t, typename VAL_TY = double>
-cusparseSpMatDescr_t makeCuSparseCSR(const legate::Store& pos,
-                                     const legate::Store& crd,
-                                     const legate::Store& vals,
+cusparseSpMatDescr_t makeCuSparseCSR(const legate::PhysicalStore& pos,
+                                     const legate::PhysicalStore& crd,
+                                     const legate::PhysicalStore& vals,
                                      size_t cols)
 {
   cusparseSpMatDescr_t matDescr;
@@ -118,7 +144,7 @@ cusparseSpMatDescr_t makeCuSparseCSR(const legate::Store& pos,
 
   auto pos_acc = pos.read_accessor<Legion::Rect<1>, 1>();
   size_t rows  = pos_domain.get_volume();
-  Legion::DeferredBuffer<INDEX_TY, 1> indptr({0, rows}, Legion::Memory::GPU_FB_MEM);
+  legate::Buffer<INDEX_TY, 1> indptr(create_1d_extents(0, rows), Legion::Memory::GPU_FB_MEM);
   auto blocks = get_num_blocks_1d(rows);
   convertGlobalPosToLocalIndPtr<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
     rows, pos_acc.ptr(pos_domain.lo()), indptr.ptr(0));
@@ -141,9 +167,9 @@ cusparseSpMatDescr_t makeCuSparseCSR(const legate::Store& pos,
 
 // makeCuSparseCSC creates a cusparse CSC matrix from input arrays.
 template <typename INDEX_TY = int64_t, typename VAL_TY = double>
-cusparseSpMatDescr_t makeCuSparseCSC(const legate::Store& pos,
-                                     const legate::Store& crd,
-                                     const legate::Store& vals,
+cusparseSpMatDescr_t makeCuSparseCSC(const legate::PhysicalStore& pos,
+                                     const legate::PhysicalStore& crd,
+                                     const legate::PhysicalStore& vals,
                                      size_t rows)
 {
   cusparseSpMatDescr_t matDescr;
@@ -154,13 +180,13 @@ cusparseSpMatDescr_t makeCuSparseCSC(const legate::Store& pos,
 
   auto pos_acc = pos.read_accessor<Legion::Rect<1>, 1>();
   size_t cols  = pos_domain.get_volume();
-  Legion::DeferredBuffer<int64_t, 1> indptr({0, cols}, Legion::Memory::GPU_FB_MEM);
+  legate::Buffer<int64_t, 1> indptr(create_1d_extents(0, cols), Legion::Memory::GPU_FB_MEM);
   auto blocks = get_num_blocks_1d(cols);
   convertGlobalPosToLocalIndPtr<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
     cols, pos_acc.ptr(pos_domain.lo()), indptr.ptr(0));
 
-#if (CUSPARSE_VER_MAJOR < 11 || (CUSPARSE_VER_MAJOR == 11 && CUSPARSE_VER_MINOR < 2))
-  assert(false && "cuSPARSE version too old! Try later than 11.1.");
+#if (CUSPARSE_VER_MAJOR < 11 || (CUSPARSE_VER_MAJOR == 11 && CUSPARSE_VER_MINOR < 4))
+  assert(false && "cuSPARSE version too old! Try later than 11.4.");
 #else
   CHECK_CUSPARSE(
     cusparseCreateCsc(&matDescr,
@@ -180,7 +206,7 @@ cusparseSpMatDescr_t makeCuSparseCSC(const legate::Store& pos,
 
 // makeCuSparseDenseVec creates a cuSparse dense vector from an input store.
 template <typename VAL_TY = double>
-cusparseDnVecDescr_t makeCuSparseDenseVec(const legate::Store& vec)
+cusparseDnVecDescr_t makeCuSparseDenseVec(const legate::PhysicalStore& vec)
 {
   cusparseDnVecDescr_t vecDescr;
   CHECK_CUSPARSE(cusparseCreateDnVec(&vecDescr,
@@ -192,7 +218,7 @@ cusparseDnVecDescr_t makeCuSparseDenseVec(const legate::Store& vec)
 
 // makeCuSparseDenseMat creates a cuSparse dense vector from an input store.
 template <typename VAL_TY = double>
-cusparseDnMatDescr_t makeCuSparseDenseMat(const legate::Store& mat)
+cusparseDnMatDescr_t makeCuSparseDenseMat(const legate::PhysicalStore& mat)
 {
   auto d = mat.domain();
 
@@ -235,7 +261,9 @@ template <typename T1, typename T2>
 __global__ void cast(size_t elems, T1* out, const T2* in)
 {
   const auto idx = global_tid_1d();
-  if (idx >= elems) return;
+  if (idx >= elems) {
+    return;
+  }
   out[idx] = T1(in[idx]);
 }
 
@@ -245,18 +273,22 @@ template <typename T>
 __global__ void localIndptrToNnz(size_t rows, uint64_t* out, T* in)
 {
   const auto idx = global_tid_1d();
-  if (idx >= rows) return;
+  if (idx >= rows) {
+    return;
+  }
   out[idx] = in[idx + 1] - in[idx];
 }
 
 // localIndptrToPos is a utility kernel to cast an indptr array
 // into a legate.sparse pos array.
 template <typename T>
-__global__ void localIndptrToPos(size_t rows, Legion::Rect<1>* out, T* in)
+__global__ void localIndptrToPos(size_t rows, Legion::Rect<1>* out, T* in, int64_t offset)
 {
   const auto idx = global_tid_1d();
-  if (idx >= rows) return;
-  out[idx] = {in[idx], in[idx + 1] - 1};
+  if (idx >= rows) {
+    return;
+  }
+  out[idx] = {in[idx] + offset, in[idx + 1] - 1 + offset};
 }
 
 }  // namespace sparse

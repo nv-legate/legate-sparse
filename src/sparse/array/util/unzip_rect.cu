@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,9 @@ __global__ void unzip_rect1_kernel(size_t elems,
                                    const AccessorRO<Rect<1>, 1> in)
 {
   const auto tid = global_tid_1d();
-  if (tid >= elems) return;
+  if (tid >= elems) {
+    return;
+  }
   const auto idx = tid + offset;
   lo[idx]        = in[idx].lo;
   hi[idx]        = in[idx].hi;
@@ -46,11 +48,11 @@ struct UnZipRect1ImplBody<VariantKind::GPU> {
     auto blocks = get_num_blocks_1d(elems);
     auto stream = get_cached_stream();
     unzip_rect1_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo, out1, out2, in);
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
   }
 };
 
-/*static*/ void UnZipRect1::gpu_variant(TaskContext& context)
+/*static*/ void UnZipRect1::gpu_variant(TaskContext context)
 {
   unzip_rect_1_template<VariantKind::GPU>(context);
 }

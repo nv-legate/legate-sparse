@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace sparse {
 using namespace legate;
 
 template <typename T>
-void upcast_impl(legate::TaskContext& ctx)
+void upcast_impl(legate::TaskContext ctx)
 {
   auto& in_fut = ctx.inputs()[0];
   const T* src;
@@ -53,7 +53,7 @@ void upcast_impl(legate::TaskContext& ctx)
   memcpy(dst, src, sizeof(T));
 }
 
-/*static*/ void UpcastFutureToRegion::cpu_variant(TaskContext& ctx)
+/*static*/ void UpcastFutureToRegion::cpu_variant(TaskContext ctx)
 {
   assert(ctx.is_single_task());
   auto future_size = ctx.scalars()[0].value<size_t>();

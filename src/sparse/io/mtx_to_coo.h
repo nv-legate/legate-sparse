@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ namespace sparse {
 
 class ReadMTXToCOO : public SparseTask<ReadMTXToCOO> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_READ_MTX_TO_COO;
-  static void cpu_variant(legate::TaskContext& ctx);
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_READ_MTX_TO_COO};
+  static void cpu_variant(legate::TaskContext ctx);
 };
 
 }  // namespace sparse

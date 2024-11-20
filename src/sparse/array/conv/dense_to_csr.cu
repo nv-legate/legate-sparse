@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,17 +25,21 @@ using namespace legate;
 template <typename VAL_TY>
 __global__ void denseToCSRNNZKernel(size_t rows,
                                     Rect<2> bounds,
-                                    AccessorWO<nnz_ty, 1> A_nnz_acc,
+                                    AccessorWO<nnz_ty, 2> A_nnz_acc,
                                     AccessorRO<VAL_TY, 2> B_vals_acc)
 {
   const auto idx = global_tid_1d();
-  if (idx >= rows) return;
+  if (idx >= rows) {
+    return;
+  }
   coord_t i        = idx + bounds.lo[0];
   nnz_ty nnz_count = 0;
   for (coord_t j = bounds.lo[1]; j < bounds.hi[1] + 1; j++) {
-    if (B_vals_acc[{i, j}] != static_cast<VAL_TY>(0.0)) { nnz_count++; }
+    if (B_vals_acc[{i, j}] != static_cast<VAL_TY>(0.0)) {
+      nnz_count++;
+    }
   }
-  A_nnz_acc[i] = nnz_count;
+  A_nnz_acc[{i, 0}] = nnz_count;
 }
 
 template <>
@@ -43,26 +47,29 @@ struct DenseToCSRNNZImpl<VariantKind::GPU> {
   template <Type::Code VAL_CODE>
   void operator()(DenseToCSRNNZArgs& args) const
   {
-    using VAL_TY = legate_type_of<VAL_CODE>;
+    using VAL_TY = type_of<VAL_CODE>;
 
     auto& nnz    = args.nnz;
     auto& B_vals = args.B_vals;
 
     // Break out early if the iteration space partition is empty.
-    if (B_vals.domain().empty()) { return; }
+    if (B_vals.domain().empty()) {
+      return;
+    }
 
     auto stream = get_cached_stream();
 
-#if (CUSPARSE_VER_MAJOR < 11 || (CUSPARSE_VER_MAJOR == 11 && CUSPARSE_VER_MINOR < 2))
+// #if (CUSPARSE_VER_MAJOR < 11 || (CUSPARSE_VER_MAJOR == 11 && CUSPARSE_VER_MINOR < 2))
+#if 1
     auto B_domain = B_vals.domain();
     auto rows     = B_domain.hi()[0] - B_domain.lo()[0] + 1;
     auto blocks   = get_num_blocks_1d(rows);
     denseToCSRNNZKernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
       rows,
       Rect<2>(B_domain.lo(), B_domain.hi()),
-      nnz.write_accessor<nnz_ty, 1>(),
+      nnz.write_accessor<nnz_ty, 2>(),
       B_vals.read_accessor<VAL_TY, 2>());
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
 #else
     // Get context sensitive objects.
     auto handle = get_cusparse();
@@ -114,22 +121,24 @@ struct DenseToCSRNNZImpl<VariantKind::GPU> {
     }
 #endif
 
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
   }
 };
 
 template <typename INDEX_TY, typename VAL_TY>
 __global__ void denseToCSRKernel(size_t rows,
                                  Rect<2> bounds,
-                                 AccessorRW<Rect<1>, 1> A_pos_acc,
+                                 AccessorRO<Rect<1>, 2> A_pos_acc,
                                  AccessorWO<INDEX_TY, 1> A_crd_acc,
                                  AccessorWO<VAL_TY, 1> A_vals_acc,
                                  AccessorRO<VAL_TY, 2> B_vals_acc)
 {
   const auto idx = global_tid_1d();
-  if (idx >= rows) return;
+  if (idx >= rows) {
+    return;
+  }
   coord_t i       = idx + bounds.lo[0];
-  int64_t nnz_pos = A_pos_acc[i].lo;
+  int64_t nnz_pos = A_pos_acc[{i, 0}].lo;
   for (coord_t j = bounds.lo[1]; j < bounds.hi[1] + 1; j++) {
     if (B_vals_acc[{i, j}] != static_cast<VAL_TY>(0.0)) {
       A_crd_acc[nnz_pos]  = static_cast<INDEX_TY>(j);
@@ -144,8 +153,8 @@ struct DenseToCSRImpl<VariantKind::GPU> {
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(DenseToCSRArgs& args) const
   {
-    using INDEX_TY = legate_type_of<INDEX_CODE>;
-    using VAL_TY   = legate_type_of<VAL_CODE>;
+    using INDEX_TY = type_of<INDEX_CODE>;
+    using VAL_TY   = type_of<VAL_CODE>;
 
     auto& A_pos  = args.A_pos;
     auto& A_crd  = args.A_crd;
@@ -153,7 +162,9 @@ struct DenseToCSRImpl<VariantKind::GPU> {
     auto& B_vals = args.B_vals;
 
     // Break out early if the iteration space partition is empty.
-    if (B_vals.domain().empty()) { return; }
+    if (B_vals.domain().empty()) {
+      return;
+    }
 
     // Get context sensitive objects.
     auto stream = get_cached_stream();
@@ -165,12 +176,13 @@ struct DenseToCSRImpl<VariantKind::GPU> {
     denseToCSRKernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
       rows,
       Rect<2>(B_domain.lo(), B_domain.hi()),
-      A_pos.read_write_accessor<Rect<1>, 1>(),
+      A_pos.read_accessor<Rect<1>, 2>(),
       A_crd.write_accessor<INDEX_TY, 1>(),
       A_vals.write_accessor<VAL_TY, 1>(),
       B_vals.read_accessor<VAL_TY, 2>());
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
 
+    // TODO (marsaev): reenable cusparse here
     // TODO (rohany): The below cuSPARSE code is buggy. In particular, it results
     //  in some column segments of the resulting CSR array to be unsorted, which is a
     //  violation of the CSR data structure.
@@ -207,12 +219,12 @@ struct DenseToCSRImpl<VariantKind::GPU> {
   }
 };
 
-/*static*/ void DenseToCSRNNZ::gpu_variant(TaskContext& context)
+/*static*/ void DenseToCSRNNZ::gpu_variant(TaskContext context)
 {
   dense_to_csr_nnz_template<VariantKind::GPU>(context);
 }
 
-/*static*/ void DenseToCSR::gpu_variant(TaskContext& context)
+/*static*/ void DenseToCSR::gpu_variant(TaskContext context)
 {
   dense_to_csr_template<VariantKind::GPU>(context);
 }

@@ -1,92 +1,124 @@
-NOTE: Legate Sparse is currently in an experimental state and not production quality
-====================================================================================
+<!--
+Copyright 2023-2024 NVIDIA Corporation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+-->
+
 
 # Legate Sparse
 
 Legate Sparse is a [Legate](https://github.com/nv-legate/legate.core) library
 that aims to provide a distributed and accelerated drop-in replacement for the
 [scipy.sparse](https://docs.scipy.org/doc/scipy/reference/sparse.html) library
-on top of the [Legion](https://legion.stanford.edu) runtime. Legate Sparse
-interoperates with [cuNumeric](https://github.com/nv-legate/cunumeric) to
+on top of the [Legate](https://github.com/nv-legate/legate.core) runtime. 
+Legate Sparse interoperates with 
+[cuPyNumeric](https://github.com/nv-legate/cupynumeric/tree/main),
+a distributed and accelerated drop-in replacement 
+for [NumPy](https://numpy.org/doc/stable/reference/index.html#reference), to
 enable writing programs that operate on distributed dense and sparse arrays.
-For some examples, take a look at the `examples/` directory. We have implemented
-a [PDE Solver](examples/pde.py), as well as [Geometric](examples/gmg.py) 
-and [Algebraic](examples/amg.py) multi-grid solvers using Legate Sparse. More complex
-and interesting applications are on the way -- stay tuned!
+Take a look at the `examples` directory for some applications that can 
+use Legate Sparse. We have implemented
+an explicit partial-differential equation (PDE) [solver](examples/pde.py) 
+and [Geometric multi-grid](examples/gmg.py) solver. 
+More complex and interesting applications are on the way -- stay tuned!
 
-# Building
+Legate Sparse is currently in alpha and supports a subset of APIs 
+and options from scipy.sparse, so if you need an API, please open 
+an issue and give us a summary of its usage. 
 
-To use Legate Sparse, you must build
-[legate.core](https://github.com/magnatelee/legate.core) and
-[cuNumeric](https://github.com/nv-legate/cunumeric) from source.  In
-particular, the following
-[branch](https://github.com/magnatelee/legate.core/tree/legate-sparse-branch-23.09/) of legate.core
-and the following
-[branch](https://github.com/nv-legate/cunumeric/tree/branch-23.09) of cuNumeric
-must be used as many necessary changes have not yet made their way into the
-main branches of Legate and cuNumeric.
+# Installation
 
-## Instructions
+To use Legate Sparse, `legate` and `cupynumeric` libraries have to be installed. 
+They can be installed either by pulling the respective conda packages 
+or by manually building from source. For more information, 
+see build instructions for [Legate](https://github.com/nv-legate/legate.core) 
+and [cuPyNumeric](https://github.com/nv-legate/cupynumeric/tree/main).
 
-First, clone [quickstart](https://github.com/rohany/quickstart) and 
-checkout the `legate-sparse` branch. This repository contains several scripts to cover
-common machines and use cases. Then clone the following fork of [legate.core](https://github.com/magnatelee/legate.core/),
-and the official repository of [cuNumeric](https://github.com/nv-legate/cunumeric). For legate.core,
-check out the `legate-sparse-branch-23.09`, and the `branch-23.09` branch of cuNumeric. Then, clone Legate Sparse. 
-We recommend the following directory organization:
+Follow the steps in this section.
+
+## Use conda packages
+
+To create a new environment and install: 
 ```
-legate/
-  quickstart/
-  legate.core/
-  cunumeric/
-  legate.sparse/
+conda create -n myenv -c conda-forge -c legate cupynumeric legate-sparse
 ```
 
-Second, set up a `conda` environment:
+or to install in an existing environment:
 ```
-quickstart/setup_conda.sh
+conda install -c conda-forge -c legate cupynumeric legate-sparse
 ```
-Running `./quickstart/setup_conda.sh --help` will display different options that allow you to customize
-the created `conda` installation and environment.
-
-Third, install `legate.core`:
-```
-cd legate.core/
-git clone https://gitlab.com/StanfordLegion/legion/
-cd legion && git checkout control_replication && cd ../
-LEGION_DIR=legion ../quickstart/build.sh
-```
-
-Fourth, install `cunumeric`:
-```
-cd cunumeric/
-../quickstart/build.sh
-```
-
-Finally, install `legate.sparse`:
-```
-cd legate.sparse
-../quickstart/build.sh
-```
-
-The `quickstart/build.sh` script will attempt to auto-detect the machine you are
-running on, if it is a common machine that the Legate or Legion developers frequently
-use. Otherwise, it will ask for additional information to be specified, such as the
-GPU architecture or network interconnect.
 
 # Usage
 
-To write programs using Legate Sparse, import the `sparse` module, which
-contains methods and types found in `scipy.sparse`.
+To write programs using Legate Sparse, import the `legate_sparse` module, which
+contains methods and types found in `scipy.sparse`. Note that the module is imported as `legate_sparse`
+and not `legate.sparse`. Here is an example program saved as `main.py`. 
+
+For more details on how to run legate programs, check 
+our [documentation](https://docs.nvidia.com/cupynumeric/24.06/).
+To run the application on a single GPU, use this command:
+
+`legate --gpus 1 ./main.py`
+
+
 ```[python]
-import sparse.io as io
-mat = io.mmread("testdata/test.mtx").tocsr()
-print((mat + mat).todense())
+import legate_sparse as sparse
+import cupynumeric as np
+
+# number of diagonals in the matrix (including main diagonal)
+n_diagonals = 3 
+
+# number of rows in the matrix
+nrows = 5 
+
+# generate two tridiaonal matrices (n_diagonals=3) and multiply them
+A = sparse.diags(
+        [1] * n_diagonals,
+        [x - (n_diagonals // 2) for x in range(n_diagonals)],
+        shape = (nrows, nrows),
+        format="csr",
+        dtype=np.float64,
+)
+
+B = sparse.diags(
+        [3] * n_diagonals,
+        [x - (n_diagonals // 2) for x in range(n_diagonals)],
+        shape = (nrows, nrows),
+        format="csr",
+        dtype=np.float64,
+)
+
+# spGEMM operation: multiplication of two sparse matrices
+C = A @ B 
+print(C.todense())
+print()
+
+# spMV operation: multiplication of a sparse matrix and a dense vector
+x = np.ones(nrows)
+C = A @ x 
+print(C)
+
+assert np.array_equal(A.todense().sum(axis=1), C)
 """
-[[4. 0. 0. 6. 0.]
- [0. 0. 0. 0. 8.]
- [0. 0. 0. 0. 0.]
- [6. 0. 0. 0. 0.]
- [0. 8. 0. 0. 0.]]
+[[6. 6. 3. 0. 0.]
+ [6. 9. 6. 3. 0.]
+ [3. 6. 9. 6. 3.]
+ [0. 3. 6. 9. 6.]
+ [0. 0. 3. 6. 6.]]
+
+[2. 3. 3. 3. 2.]
 """
 ```
+
+For more examples, check the `examples` directory.

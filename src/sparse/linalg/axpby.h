@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,23 +23,23 @@
 namespace sparse {
 
 struct AXPBYArgs {
-  const legate::Store& y;
-  const legate::Store& x;
-  const legate::Store& a;
-  const legate::Store& b;
+  const legate::PhysicalStore& y;
+  const legate::PhysicalStore& x;
+  const legate::PhysicalStore& a;
+  const legate::PhysicalStore& b;
   const bool isalpha;
   const bool negate;
 };
 
 class AXPBY : public SparseTask<AXPBY> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_AXPBY;
-  static void cpu_variant(legate::TaskContext& ctx);
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_AXPBY};
+  static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
-  static void omp_variant(legate::TaskContext& ctx);
+  static void omp_variant(legate::TaskContext ctx);
 #endif
 #ifdef LEGATE_USE_CUDA
-  static void gpu_variant(legate::TaskContext& ctx);
+  static void gpu_variant(legate::TaskContext ctx);
 #endif
 };
 

@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,12 @@ CUDALibraries::~CUDALibraries() { finalize(); }
 
 void CUDALibraries::finalize()
 {
-  if (finalized_) return;
-  if (cusparse_ != nullptr) finalize_cusparse();
+  if (finalized_) {
+    return;
+  }
+  if (cusparse_ != nullptr) {
+    finalize_cusparse();
+  }
   finalized_ = true;
 }
 
@@ -41,7 +45,9 @@ void CUDALibraries::finalize_cusparse()
 
 cusparseHandle_t CUDALibraries::get_cusparse()
 {
-  if (this->cusparse_ == nullptr) { CHECK_CUSPARSE(cusparseCreate(&this->cusparse_)); }
+  if (this->cusparse_ == nullptr) {
+    CHECK_CUSPARSE(cusparseCreate(&this->cusparse_));
+  }
   return this->cusparse_;
 }
 
@@ -49,7 +55,7 @@ static CUDALibraries& get_cuda_libraries(legate::Processor proc)
 {
   if (proc.kind() != legate::Processor::TOC_PROC) {
     fprintf(stderr, "Illegal request for CUDA libraries for non-GPU processor");
-    LEGATE_ABORT;
+    LEGATE_ABORT("Illegal request for CUDA libraries for non-GPU processor");
   }
 
   static CUDALibraries cuda_libraries[LEGION_MAX_NUM_PROCS];
@@ -71,10 +77,10 @@ cusparseHandle_t get_cusparse()
 
 class LoadCUDALibsTask : public SparseTask<LoadCUDALibsTask> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_LOAD_CUDALIBS;
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_LOAD_CUDALIBS};
 
  public:
-  static void gpu_variant(legate::TaskContext& context)
+  static void gpu_variant(legate::TaskContext context)
   {
     const auto proc = legate::Processor::get_executing_processor();
     auto& lib       = get_cuda_libraries(proc);
@@ -84,10 +90,10 @@ class LoadCUDALibsTask : public SparseTask<LoadCUDALibsTask> {
 
 class UnloadCUDALibsTask : public SparseTask<UnloadCUDALibsTask> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_UNLOAD_CUDALIBS;
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_UNLOAD_CUDALIBS};
 
  public:
-  static void gpu_variant(legate::TaskContext& context)
+  static void gpu_variant(legate::TaskContext context)
   {
     const auto proc = legate::Processor::get_executing_processor();
     auto& lib       = get_cuda_libraries(proc);

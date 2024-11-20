@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ using namespace legate;
 using coord_ty = int64_t;
 using val_ty   = double;
 
-/*static*/ void ReadMTXToCOO::cpu_variant(TaskContext& ctx)
+/*static*/ void ReadMTXToCOO::cpu_variant(TaskContext ctx)
 {
   // Much of this code was adapted from the matrix-market file IO module
   // within DISTAL.
@@ -44,6 +44,7 @@ using val_ty   = double;
   std::fstream file;
   file.open(filename, std::fstream::in);
 
+  assert(file.is_open());
   // Parse the header. The header is structured as follows:
   //  %%MatrixMarket type format field symmetry
   std::string line;
@@ -82,7 +83,9 @@ using val_ty   = double;
   do {
     std::stringstream lineStream(line);
     lineStream >> token;
-    if (token[0] != '%') { break; }
+    if (token[0] != '%') {
+      break;
+    }
   } while (std::getline(file, line));
 
   char* linePtr = (char*)line.data();
@@ -99,11 +102,13 @@ using val_ty   = double;
   }
 
   size_t bufSize = lines;
-  if (symmetric) { bufSize *= 2; }
+  if (symmetric) {
+    bufSize *= 2;
+  }
 
-  auto row_acc  = rows.create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
-  auto col_acc  = cols.create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
-  auto vals_acc = vals.create_output_buffer<val_ty, 1>(bufSize, true /* return_data */);
+  auto row_acc  = rows.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  auto col_acc  = cols.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  auto vals_acc = vals.data().create_output_buffer<val_ty, 1>(bufSize, true /* return_data */);
 
   size_t idx = 0;
   while (std::getline(file, line)) {
@@ -132,9 +137,9 @@ using val_ty   = double;
   }
 
   file.close();
-  m_store.write_accessor<int64_t, 1>()[0]    = int64_t(m);
-  n_store.write_accessor<int64_t, 1>()[0]    = int64_t(n);
-  nnz_store.write_accessor<uint64_t, 1>()[0] = uint64_t(idx);
+  m_store.data().write_accessor<int64_t, 1>()[0]    = int64_t(m);
+  n_store.data().write_accessor<int64_t, 1>()[0]    = int64_t(n);
+  nnz_store.data().write_accessor<uint64_t, 1>()[0] = uint64_t(idx);
 }
 
 namespace  // unnamed

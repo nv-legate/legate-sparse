@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,9 @@ namespace sparse {
 
 using namespace legate;
 
-/*static*/ void ExpandPosToCoordinates::omp_variant(TaskContext& context)
+/*static*/ void ExpandPosToCoordinates::omp_variant(TaskContext context)
 {
-  pos_to_coordinates_template(
-    context, thrust::omp::par, Core::has_socket_mem ? Memory::SOCKET_MEM : Memory::SYSTEM_MEM);
+  pos_to_coordinates_template(context, thrust::omp::par);
 }
 
 }  // namespace sparse

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2021-2022 NVIDIA Corporation
+# Copyright 2021-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,9 +53,11 @@ class BooleanFlag(argparse.Action):
 
         option_strings = flatten(
             [
-                [opt, "--no-" + opt[2:], "--no" + opt[2:]]
-                if opt.startswith("--")
-                else [opt]
+                (
+                    [opt, "--no-" + opt[2:], "--no" + opt[2:]]
+                    if opt.startswith("--")
+                    else [opt]
+                )
                 for opt in option_strings
             ]
         )
@@ -107,9 +109,7 @@ def was_previously_built_with_different_build_isolation(
         legate_sparse_build_dir is not None
         and os.path.exists(legate_sparse_build_dir)
         and os.path.exists(
-            cmake_cache := os.path.join(
-                legate_sparse_build_dir, "CMakeCache.txt"
-            )
+            cmake_cache := os.path.join(legate_sparse_build_dir, "CMakeCache.txt")
         )
     ):
         try:
@@ -140,9 +140,7 @@ def install_legate_sparse(
     networks,
     hdf,
     install_dir,
-    legate_branch,
     legate_dir,
-    legate_url,
     llvm,
     march,
     maxdim,
@@ -184,9 +182,7 @@ def install_legate_sparse(
         print("networks: ", networks)
         print("hdf: ", hdf)
         print("install_dir: ", install_dir)
-        print("legate_branch: ", legate_branch)
         print("legate_dir: ", legate_dir)
-        print("legate_url: ", legate_url)
         print("llvm: ", llvm)
         print("march: ", march)
         print("maxdim: ", maxdim)
@@ -305,6 +301,7 @@ def install_legate_sparse(
     "Debug" if debug else "RelWithDebInfo" if debug_release else "Release"
 )}
 -DBUILD_SHARED_LIBS=ON
+-DBUILD_MARCH={str(march)}
 -DCMAKE_CUDA_ARCHITECTURES={str(arch)}
 -DLegion_MAX_DIM={str(maxdim)}
 -DLegion_MAX_FIELDS={str(maxfields)}
@@ -317,8 +314,6 @@ def install_legate_sparse(
 -DLegion_USE_HDF5={("ON" if hdf else "OFF")}
 """.splitlines()
 
-    if march:
-        cmake_flags += [f"-DBUILD_MARCH={march}"]
     if cuda_dir:
         cmake_flags += ["-DCUDAToolkit_ROOT=%s" % cuda_dir]
     if nccl_dir:
@@ -330,15 +325,7 @@ def install_legate_sparse(
     if thrust_dir:
         cmake_flags += ["-DThrust_ROOT=%s" % thrust_dir]
     if legate_dir:
-        cmake_flags += ["-Dlegate_core_ROOT=%s" % legate_dir]
-    if legate_url:
-        cmake_flags += [
-            "-Dlegate_sparse_LEGATE_CORE_REPOSITORY=%s" % legate_url
-        ]
-    if legate_branch:
-        cmake_flags += [
-            "-Dlegate_sparse_LEGATE_CORE_BRANCH=%s" % legate_branch
-        ]
+        cmake_flags += ["-Dlegate_ROOT=%s" % legate_dir]
 
     cmake_flags += extra_flags
     build_flags = [f"-j{str(thread_count)}"]
@@ -356,20 +343,18 @@ def install_legate_sparse(
         }
     )
 
-    execute_command(
-        pip_install_cmd, verbose, cwd=legate_sparse_dir, env=cmd_env
-    )
+    execute_command(pip_install_cmd, verbose, cwd=legate_sparse_dir, env=cmd_env)
 
 
 def driver():
-    parser = argparse.ArgumentParser(description="Install cuNumeric.")
+    parser = argparse.ArgumentParser(description="Install Legate Sparse.")
     parser.add_argument(
         "--install-dir",
         dest="install_dir",
         metavar="DIR",
         required=False,
         default=None,
-        help="Path to install cuNumeric software",
+        help="Path to Legate Sparse source directory",
     )
     parser.add_argument(
         "--debug",
@@ -377,7 +362,7 @@ def driver():
         action="store_true",
         required=False,
         default=os.environ.get("DEBUG", "0") == "1",
-        help="Build cuNumeric with no optimizations.",
+        help="Generates debug build",
     )
     parser.add_argument(
         "--debug-release",
@@ -385,8 +370,7 @@ def driver():
         action="store_true",
         required=False,
         default=os.environ.get("DEBUG_RELEASE", "0") == "1",
-        help="Build cuNumeric with optimizations, but include debugging "
-        "symbols.",
+        help="Generates release build with debugging symbols.",
     )
     parser.add_argument(
         "--check-bounds",
@@ -394,21 +378,21 @@ def driver():
         action="store_true",
         required=False,
         default=False,
-        help="Build cuNumeric with bounds checks.",
+        help="Build Legate Sparse with bounds checks.",
     )
     parser.add_argument(
         "--max-dim",
         dest="maxdim",
         type=int,
         default=int(os.environ.get("LEGION_MAX_DIM", 4)),
-        help="Maximum number of dimensions that cuNumeric will support",
+        help="Maximum number of dimensions supported",
     )
     parser.add_argument(
         "--max-fields",
         dest="maxfields",
         type=int,
         default=int(os.environ.get("LEGION_MAX_FIELDS", 256)),
-        help="Maximum number of fields that cuNumeric will support",
+        help="Maximum number of fields supported",
     )
     parser.add_argument(
         "--network",
@@ -428,26 +412,12 @@ def driver():
         help="Path to GASNet installation directory.",
     )
     parser.add_argument(
-        "--with-core",
+        "--with-legate",
         dest="legate_dir",
         metavar="DIR",
         required=False,
         default=os.environ.get("LEGATE_DIR"),
-        help="Path to Legate Core installation directory.",
-    )
-    parser.add_argument(
-        "--legate-url",
-        dest="legate_url",
-        required=False,
-        default="https://github.com/nv-legate/legate.core.git",
-        help="Legate git URL to build cuNumeric with.",
-    )
-    parser.add_argument(
-        "--legate-branch",
-        dest="legate_branch",
-        required=False,
-        default="legate-sparse",
-        help="Legate branch to build cuNumeric with.",
+        help="Path to Legate installation directory.",
     )
     parser.add_argument(
         "--with-thrust",
@@ -488,7 +458,7 @@ def driver():
         "--cuda",
         action=BooleanFlag,
         default=os.environ.get("USE_CUDA", "0") == "1",
-        help="Build cuNumeric with CUDA support.",
+        help="Build with CUDA support to enable running on GPUs",
     )
     parser.add_argument(
         "--with-cuda",
@@ -503,20 +473,20 @@ def driver():
         dest="arch",
         action="store",
         required=False,
-        default="NATIVE",
+        default="all-major",
         help="Specify the target GPU architecture.",
     )
     parser.add_argument(
         "--openmp",
         action=BooleanFlag,
         default=os.environ.get("USE_OPENMP", "0") == "1",
-        help="Build cuNumeric with OpenMP support.",
+        help="Build with OpenMP support to enable using multiple CPU threads",
     )
     parser.add_argument(
         "--march",
         dest="march",
         required=False,
-        default=("haswell" if platform.machine() == "x86_64" else None),
+        default=("haswell" if platform.machine() == "x86_64" else "native"),
         help="Specify the target CPU architecture.",
     )
     parser.add_argument(
@@ -525,7 +495,7 @@ def driver():
         action="store_true",
         required=False,
         default=os.environ.get("USE_LLVM", "0") == "1",
-        help="Build cuNumeric with LLVM support.",
+        help="Build with LLVM support.",
     )
     parser.add_argument(
         "--hdf5",
@@ -534,7 +504,7 @@ def driver():
         action="store_true",
         required=False,
         default=os.environ.get("USE_HDF", "0") == "1",
-        help="Build cuNumeric with HDF support.",
+        help="Build with HDF support.",
     )
     parser.add_argument(
         "--spy",
@@ -542,7 +512,7 @@ def driver():
         action="store_true",
         required=False,
         default=os.environ.get("USE_SPY", "0") == "1",
-        help="Build cuNumeric with detailed Legion Spy enabled.",
+        help="Build with detailed Legion Spy enabled.",
     )
     parser.add_argument(
         "--conduit",
@@ -554,7 +524,7 @@ def driver():
         # See https://github.com/nv-legate/legate.core/issues/294.
         choices=["ibv", "ucx", "aries", "mpi"],
         default=os.environ.get("CONDUIT"),
-        help="Build cuNumeric with specified GASNet conduit.",
+        help="Build with specified GASNet conduit.",
     )
     parser.add_argument(
         "--clean",
@@ -586,8 +556,10 @@ def driver():
         action="store_true",
         required=False,
         default=False,
-        help="Perform an editable install. Disables --build-isolation if set "
-        "(passing --no-deps --no-build-isolation to pip).",
+        help=(
+            "Perform an editable install. Disables --build-isolation if set "
+            "(passing --no-deps --no-build-isolation to pip)."
+        ),
     )
     parser.add_argument(
         "--build-isolation",
@@ -595,9 +567,11 @@ def driver():
         action=BooleanFlag,
         required=False,
         default=True,
-        help="Enable isolation when building a modern source distribution. "
-        "Build dependencies specified by PEP 518 must be already "
-        "installed if this option is used.",
+        help=(
+            "Enable isolation when building a modern source distribution. "
+            "Build dependencies specified by PEP 518 must be already "
+            "installed if this option is used."
+        ),
     )
     parser.add_argument(
         "-v",

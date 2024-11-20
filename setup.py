@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2021-2022 NVIDIA Corporation
+# Copyright 2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,13 +18,28 @@
 from setuptools import find_packages
 from skbuild import setup
 
-import versioneer
+# TODO: build yields "cant find legate module"....
+"""
+import legate.install_info as lg_install_info
+import os
+from pathlib import Path
+
+legate_dir = Path(lg_install_info.libpath).parent.as_posix()
+
+cmake_flags = [
+    f"-Dlegate_ROOT:STRING={legate_dir}",
+]
+
+env_cmake_args = os.environ.get("CMAKE_ARGS")
+if env_cmake_args is not None:
+    cmake_flags.append(env_cmake_args)
+os.environ["CMAKE_ARGS"] = " ".join(cmake_flags)
+"""
 
 setup(
-    name="legate_sparse",
-    version=versioneer.get_version(),
-    description="An Aspiring Drop-In Replacement for Scipy.Sparse at Scale",
-    url="https://github.com/nv-legate/legate-sparse",
+    name="legate-sparse",
+    version="24.11",
+    description="An Aspiring Drop-In Replacement for SciPy Sparse module at Scale",
     author="NVIDIA Corporation",
     license="Apache 2.0",
     classifiers=[
@@ -33,16 +48,13 @@ setup(
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     packages=find_packages(
         where=".",
-        include=["sparse*"],
+        include=["legate_sparse*"],
     ),
     include_package_data=True,
-    cmdclass=versioneer.get_cmdclass(),
-    install_requires=["numpy>=1.22"],
     zip_safe=False,
 )

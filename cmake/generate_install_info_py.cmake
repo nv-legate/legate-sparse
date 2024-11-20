@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright 2022 NVIDIA Corporation
+# Copyright 2022-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,6 @@ execute_process(
 
 set(libpath "")
 configure_file(
-  "${CMAKE_CURRENT_LIST_DIR}/../sparse/install_info.py.in"
-  "${CMAKE_CURRENT_LIST_DIR}/../sparse/install_info.py"
+  "${CMAKE_CURRENT_LIST_DIR}/../legate_sparse/install_info.py.in"
+  "${CMAKE_CURRENT_LIST_DIR}/../legate_sparse/install_info.py"
 @ONLY)

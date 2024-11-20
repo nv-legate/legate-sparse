@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,14 +23,13 @@ namespace sparse {
 
 using namespace legate;
 
-/*static*/ void ExpandPosToCoordinates::gpu_variant(TaskContext& context)
+/*static*/ void ExpandPosToCoordinates::gpu_variant(TaskContext context)
 {
   auto stream = get_cached_stream();
-  auto kind   = Memory::GPU_FB_MEM;
-  ThrustAllocator alloc(kind);
+  ThrustAllocator alloc(Memory::GPU_FB_MEM);
   auto policy = thrust::cuda::par(alloc).on(stream);
-  pos_to_coordinates_template(context, policy, kind);
-  CHECK_CUDA_STREAM(stream);
+  pos_to_coordinates_template(context, policy);
+  LEGATE_CHECK_CUDA_STREAM(stream);
 }
 
 }  // namespace sparse

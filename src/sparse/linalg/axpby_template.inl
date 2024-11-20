@@ -1,4 +1,4 @@
-/* Copyright 2021-2022 NVIDIA Corporation
+/* Copyright 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,12 +32,14 @@ struct AXPBYImpl {
   template <Type::Code VAL_CODE>
   void operator()(AXPBYArgs& args) const
   {
-    using VAL_TY = legate_type_of<VAL_CODE>;
+    using VAL_TY = type_of<VAL_CODE>;
     auto y       = args.y.read_write_accessor<VAL_TY, 1>();
     auto x       = args.x.read_accessor<VAL_TY, 1>();
     auto a       = args.a.read_accessor<VAL_TY, 1>();
     auto b       = args.b.read_accessor<VAL_TY, 1>();
-    if (args.y.domain().empty()) return;
+    if (args.y.domain().empty()) {
+      return;
+    }
     if (args.isalpha) {
       if (args.negate) {
         AXPBYImplBody<KIND, VAL_CODE, true, true>()(y, x, a, b, args.y.shape<1>());
@@ -55,17 +57,15 @@ struct AXPBYImpl {
 };
 
 template <VariantKind KIND>
-static void axpby_template(TaskContext& context)
+static void axpby_template(TaskContext context)
 {
-  auto& inputs  = context.inputs();
-  auto& scalars = context.scalars();
   AXPBYArgs args{
     context.outputs()[0],
-    inputs[0],
-    inputs[1],
-    inputs[2],
-    scalars[0].value<bool>(),
-    scalars[1].value<bool>(),
+    context.inputs()[0],
+    context.inputs()[1],
+    context.inputs()[2],
+    context.scalars()[0].value<bool>(),
+    context.scalars()[1].value<bool>(),
   };
   value_type_dispatch(args.y.code(), AXPBYImpl<KIND>{}, args);
 }

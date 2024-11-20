@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 #pragma once
 
 #include "legate.h"
-#include "core/cuda/cuda_help.h"
-#include "core/cuda/stream_pool.h"
-#include "cusparse.h"
+#include "legate/cuda/cuda.h"
+#include "legate/cuda/stream_pool.h"
+#include <cusparse.h>
 #include <nccl.h>
 
 #define THREADS_PER_BLOCK 128

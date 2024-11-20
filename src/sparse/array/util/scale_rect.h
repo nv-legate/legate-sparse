@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,19 +23,19 @@
 namespace sparse {
 
 struct ScaleRect1Args {
-  const legate::Store& out;
+  const legate::PhysicalStore& out;
   int64_t scale;
 };
 
 class ScaleRect1 : public SparseTask<ScaleRect1> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_SCALE_RECT_1;
-  static void cpu_variant(legate::TaskContext& ctx);
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_SCALE_RECT_1};
+  static void cpu_variant(legate::TaskContext context);
 #ifdef LEGATE_USE_OPENMP
-  static void omp_variant(legate::TaskContext& ctx);
+  static void omp_variant(legate::TaskContext context);
 #endif
 #ifdef LEGATE_USE_CUDA
-  static void gpu_variant(legate::TaskContext& context);
+  static void gpu_variant(legate::TaskContext context);
 #endif
 };
 

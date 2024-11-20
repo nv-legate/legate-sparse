@@ -1,4 +1,4 @@
-# Copyright 2023 NVIDIA Corporation
+# Copyright 2023-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cupynumeric
 import numpy
 import scipy.sparse as scpy
 import scipy.stats as stats
@@ -42,3 +43,13 @@ def sample_dense(N: int, D: int, density: float, seed: int):
 
 def sample_dense_vector(N: int, density: float, seed: int):
     return sample_dense(N, 1, density, seed).squeeze()
+
+
+def simple_system_gen(N, M, cls, tol=0.5):
+    a_dense = cupynumeric.random.rand(N, M)
+    x = cupynumeric.random.rand(M)
+    a_dense = cupynumeric.where(a_dense < tol, a_dense, 0)
+
+    a_sparse = None if cls is None else cls(a_dense)
+
+    return a_dense, a_sparse, x

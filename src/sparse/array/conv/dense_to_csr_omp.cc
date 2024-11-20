@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,9 @@ using namespace legate;
 
 template <Type::Code VAL_CODE>
 struct DenseToCSRNNZImplBody<VariantKind::OMP, VAL_CODE> {
-  using VAL_TY = legate_type_of<VAL_CODE>;
+  using VAL_TY = type_of<VAL_CODE>;
 
-  void operator()(const AccessorWO<nnz_ty, 1>& nnz,
+  void operator()(const AccessorWO<nnz_ty, 2>& nnz,
                   const AccessorRO<VAL_TY, 2>& B_vals,
                   const Rect<2>& rect)
   {
@@ -33,19 +33,21 @@ struct DenseToCSRNNZImplBody<VariantKind::OMP, VAL_CODE> {
     for (auto i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
       size_t row_nnz = 0;
       for (auto j = rect.lo[1]; j < rect.hi[1] + 1; j++) {
-        if (B_vals[{i, j}] != static_cast<VAL_TY>(0.0)) { row_nnz++; }
+        if (B_vals[{i, j}] != static_cast<VAL_TY>(0.0)) {
+          row_nnz++;
+        }
       }
-      nnz[i] = row_nnz;
+      nnz[{i, 0}] = row_nnz;
     }
   }
 };
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct DenseToCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
-  using VAL_TY   = legate_type_of<VAL_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
+  using VAL_TY   = type_of<VAL_CODE>;
 
-  void operator()(const AccessorRW<Rect<1>, 1>& A_pos,
+  void operator()(const AccessorRO<Rect<1>, 2>& A_pos,
                   const AccessorWO<INDEX_TY, 1>& A_crd,
                   const AccessorWO<VAL_TY, 1>& A_vals,
                   const AccessorRO<VAL_TY, 2>& B_vals,
@@ -53,7 +55,7 @@ struct DenseToCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
   {
 #pragma omp parallel for schedule(static)
     for (auto i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
-      coord_t nnz_pos = A_pos[i].lo;
+      coord_t nnz_pos = A_pos[{i, 0}].lo;
       for (auto j = rect.lo[1]; j < rect.hi[1] + 1; j++) {
         if (B_vals[{i, j}] != static_cast<VAL_TY>(0.0)) {
           A_crd[nnz_pos]  = static_cast<INDEX_TY>(j);
@@ -65,12 +67,12 @@ struct DenseToCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
   }
 };
 
-/*static*/ void DenseToCSRNNZ::omp_variant(TaskContext& context)
+/*static*/ void DenseToCSRNNZ::omp_variant(TaskContext context)
 {
   dense_to_csr_nnz_template<VariantKind::OMP>(context);
 }
 
-/*static*/ void DenseToCSR::omp_variant(TaskContext& context)
+/*static*/ void DenseToCSR::omp_variant(TaskContext context)
 {
   dense_to_csr_template<VariantKind::OMP>(context);
 }

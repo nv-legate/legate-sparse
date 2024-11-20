@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ struct ScaleRect1ImplBody<VariantKind::CPU> {
   }
 };
 
-/*static*/ void ScaleRect1::cpu_variant(TaskContext& context)
+/*static*/ void ScaleRect1::cpu_variant(TaskContext context)
 {
   scale_rect_1_template<VariantKind::CPU>(context);
 }

@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,26 +20,28 @@
 #include "sparse/sparse_c.h"
 #include "legate.h"
 
+#include "legate/mapping/store.h"
+
 namespace sparse {
 struct GetCSRDiagonalArgs {
-  const legate::Store& diag;
-  const legate::Store& pos;
-  const legate::Store& crd;
-  const legate::Store& vals;
+  const legate::PhysicalStore& diag;
+  const legate::PhysicalStore& pos;
+  const legate::PhysicalStore& crd;
+  const legate::PhysicalStore& vals;
 };
 
 class GetCSRDiagonal : public SparseTask<GetCSRDiagonal> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_CSR_DIAGONAL;
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_DIAGONAL};
   // TODO (rohany): We could rewrite this having each implementation just make
   //  a call to thrust::transform, but the implementations are simple enough
   //  anyway.
-  static void cpu_variant(legate::TaskContext& ctx);
+  static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
-  static void omp_variant(legate::TaskContext& ctx);
+  static void omp_variant(legate::TaskContext ctx);
 #endif
 #ifdef LEGATE_USE_CUDA
-  static void gpu_variant(legate::TaskContext& context);
+  static void gpu_variant(legate::TaskContext context);
 #endif
 };
 

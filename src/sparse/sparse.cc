@@ -1,4 +1,4 @@
-/* Copyright 2021-2022 NVIDIA Corporation
+/* Copyright 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ void registration_callback()
   // config.max_tasks = LEGATE_SPARSE_LAST_TASK;
   // config.max_projections = LEGATE_SPARSE_LAST_PROJ_FN;
   config.max_tasks = 100;
-  // TODO (rohany): We're dynamically generating projections... How does cunumeric handle this?
+  // TODO (rohany): We're dynamically generating projections... How does cupynumeric handle this?
   config.max_projections = 1000;
   auto ctx               = Runtime::get_runtime()->create_library(
     library_name, config, std::make_unique<LegateSparseMapper>());
@@ -50,7 +50,7 @@ void registration_callback()
   Sparse::get_registrar().register_all_tasks(ctx);
 
   auto runtime = Legion::Runtime::get_runtime();
-  auto proj_id = ctx->get_projection_id(LEGATE_SPARSE_PROJ_FN_1D_TO_2D);
+  auto proj_id = ctx.get_projection_id(LEGATE_SPARSE_PROJ_FN_1D_TO_2D);
   auto functor = new Promote1Dto2DFunctor(runtime);
   runtime->register_projection_functor(proj_id, functor, true /*silence warnings*/);
 }
@@ -59,5 +59,5 @@ void registration_callback()
 
 extern "C" {
 
-void perform_registration(void) { Core::perform_registration<sparse::registration_callback>(); }
+void legate_sparse_perform_registration(void) { sparse::registration_callback(); }
 }

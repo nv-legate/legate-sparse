@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright 2022 NVIDIA Corporation
+# Copyright 2022-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -62,13 +62,14 @@ execute_process(
 
 set(libpath "")
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/sparse/install_info.py.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/sparse/install_info.py"
+  "${CMAKE_CURRENT_SOURCE_DIR}/legate_sparse/install_info.py.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/legate_sparse/install_info.py"
 @ONLY)
 
 add_library(legate_sparse_python INTERFACE)
 add_library(legate_sparse::legate_sparse_python ALIAS legate_sparse_python)
-target_link_libraries(legate_sparse_python INTERFACE legate::core)
+#TODO (marsaev): do we need to add cupynumeric as a dependency here?
+target_link_libraries(legate_sparse_python INTERFACE legate::legate)
 
 ##############################################################################
 # - install targets ----------------------------------------------------------

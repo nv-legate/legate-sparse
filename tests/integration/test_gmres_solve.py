@@ -1,4 +1,4 @@
-# Copyright 2023 NVIDIA Corporation
+# Copyright 2022-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,34 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cunumeric as np
+import cupynumeric as np
 import pytest
-import scipy
-from utils.sample import sample, sample_dense_vector
+from utils.sample import sample_dense, sample_dense_vector
 
-import sparse.linalg as linalg
-from sparse import csr_array
+import legate_sparse.linalg as linalg
+from legate_sparse import csr_array
 
 
-@pytest.mark.xfail(reason="Seems to be failing on 2 GPUs on CI (GH #111).")
 def test_gmres_solve():
-    N, D = 100, 100
+    N, D = 1000, 1000
     seed = 471014
-    A = csr_array(sample(N, D, 0.1, seed).todense())
+    A = sample_dense(N, D, 0.1, seed)
+    A = 0.5 * (A + A.T)
+    A = A + N * np.eye(N)
+    A = csr_array(A)
     x = sample_dense_vector(D, 0.1, seed)
+
     y = A @ x
     assert np.allclose((A @ x), y)
-    # For mathematical reasons I don't understand, GMRES cannot converge
-    # when solving this small system. To adequately test the solver, run
-    # against scipy and compare the result. To make the test times relatively
-    # small, we cap the max iteration count here. However, if both solvers
-    # are allowed to run to completion, they match with the default small
-    # error tolerance.
-    x_pred_sci = scipy.sparse.linalg.gmres(
-        A, y, atol=1e-5, tol=1e-5, maxiter=300
-    )[0]
-    x_pred_legate = linalg.gmres(A, y, atol=1e-5, tol=1e-5, maxiter=300)[0]
-    assert np.allclose(x_pred_sci, x_pred_legate, atol=1e-1)
+
+    x_pred, iters = linalg.gmres(A, y, atol=1e-5, tol=1e-5, maxiter=300)
+    assert np.allclose((A @ x_pred), y, atol=1e-8)
 
 
 if __name__ == "__main__":

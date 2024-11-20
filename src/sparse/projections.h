@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,5 +56,10 @@ class Functor1DToRowsImplicit2D : public LegateSparseProjectionFunctor {
   int32_t gx, gy;
   bool rows = true;
 };
+
+void register_legate_sparse_1d_to_2d_functor(legion_projection_id_t proj_id,
+                                             int32_t gx,
+                                             int32_t gy,
+                                             bool rows);
 
 }  // namespace sparse

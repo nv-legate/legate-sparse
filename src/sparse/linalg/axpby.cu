@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,10 +31,14 @@ __global__ void axpby_kernel(size_t elems,
                              AccessorRO<VAL_TY, 1> b)
 {
   const auto idx = global_tid_1d();
-  if (idx >= elems) return;
+  if (idx >= elems) {
+    return;
+  }
   auto i   = idx + offset;
   auto val = a[0] / b[0];
-  if (NEGATE) { val = static_cast<VAL_TY>(-1) * val; }
+  if (NEGATE) {
+    val = static_cast<VAL_TY>(-1) * val;
+  }
   if (IS_ALPHA) {
     y[i] = val * x[i] + y[i];
   } else {
@@ -44,7 +48,7 @@ __global__ void axpby_kernel(size_t elems,
 
 template <Type::Code VAL_CODE, bool IS_ALPHA, bool NEGATE>
 struct AXPBYImplBody<VariantKind::GPU, VAL_CODE, IS_ALPHA, NEGATE> {
-  using VAL_TY = legate_type_of<VAL_CODE>;
+  using VAL_TY = type_of<VAL_CODE>;
 
   void operator()(const AccessorRW<VAL_TY, 1>& y,
                   const AccessorRO<VAL_TY, 1>& x,
@@ -57,11 +61,11 @@ struct AXPBYImplBody<VariantKind::GPU, VAL_CODE, IS_ALPHA, NEGATE> {
     auto stream = get_cached_stream();
     axpby_kernel<VAL_TY, IS_ALPHA, NEGATE>
       <<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo[0], y, x, a, b);
-    CHECK_CUDA_STREAM(stream);
+    LEGATE_CHECK_CUDA_STREAM(stream);
   }
 };
 
-/*static*/ void AXPBY::gpu_variant(TaskContext& context)
+/*static*/ void AXPBY::gpu_variant(TaskContext context)
 {
   axpby_template<VariantKind::GPU>(context);
 }

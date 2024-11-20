@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
 #include "sparse/util/dispatch.h"
 #include "sparse/util/typedefs.h"
 
+#include <iostream>
+
 namespace sparse {
 
 using namespace legate;
@@ -33,12 +35,14 @@ struct DenseToCSRNNZImpl {
   template <Type::Code VAL_CODE>
   void operator()(DenseToCSRNNZArgs& args) const
   {
-    using VAL_TY = legate_type_of<VAL_CODE>;
+    using VAL_TY = type_of<VAL_CODE>;
 
-    auto nnz    = args.nnz.write_accessor<nnz_ty, 1>();
+    auto nnz    = args.nnz.write_accessor<nnz_ty, 2>();
     auto B_vals = args.B_vals.read_accessor<VAL_TY, 2>();
 
-    if (args.nnz.domain().empty()) return;
+    if (args.nnz.domain().empty()) {
+      return;
+    }
     DenseToCSRNNZImplBody<KIND, VAL_CODE>()(nnz, B_vals, args.B_vals.shape<2>());
   }
 };
@@ -51,41 +55,44 @@ struct DenseToCSRImpl {
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(DenseToCSRArgs& args) const
   {
-    using INDEX_TY = legate_type_of<INDEX_CODE>;
-    using VAL_TY   = legate_type_of<VAL_CODE>;
+    using INDEX_TY = type_of<INDEX_CODE>;
+    using VAL_TY   = type_of<VAL_CODE>;
 
-    auto A_pos  = args.A_pos.read_write_accessor<Rect<1>, 1>();
+    auto A_pos  = args.A_pos.read_accessor<Rect<1>, 2>();
     auto A_crd  = args.A_crd.write_accessor<INDEX_TY, 1>();
     auto A_vals = args.A_vals.write_accessor<VAL_TY, 1>();
     auto B_vals = args.B_vals.read_accessor<VAL_TY, 2>();
 
-    if (args.A_pos.domain().empty()) return;
+    if (args.A_pos.domain().empty()) {
+      return;
+    }
     DenseToCSRImplBody<KIND, INDEX_CODE, VAL_CODE>()(
       A_pos, A_crd, A_vals, B_vals, args.B_vals.shape<2>());
   }
 };
 
 template <VariantKind KIND>
-static void dense_to_csr_nnz_template(TaskContext& context)
+static void dense_to_csr_nnz_template(TaskContext context)
 {
-  auto& outputs = context.outputs();
-  // We have to promote the nnz region for the auto-parallelizer to kick in,
-  // so remove the transformation before proceeding.
-  if (outputs[0].transformed()) { outputs[0].remove_transform(); }
-  DenseToCSRNNZArgs args{outputs[0], context.inputs()[0]};
+  DenseToCSRNNZArgs args{
+    context.output(0),  // nnz_per_row
+    context.input(0)    // B_vals
+  };
   value_type_dispatch(args.B_vals.code(), DenseToCSRNNZImpl<KIND>{}, args);
 }
 
 template <VariantKind KIND>
-static void dense_to_csr_template(TaskContext& context)
+static void dense_to_csr_template(TaskContext context)
 {
-  auto& outputs = context.outputs();
-  // We have to promote the pos region for the auto-parallelizer to kick in,
-  // so remove the transformation before proceeding.
-  if (outputs[0].transformed()) { outputs[0].remove_transform(); }
-  DenseToCSRArgs args{outputs[0], outputs[1], outputs[2], context.inputs()[0]};
+  DenseToCSRArgs args{
+    context.input(0),   // A_pos (promoted)
+    context.output(0),  // A_crd
+    context.output(1),  // A_vals
+    context.input(1)    // B_vals
+  };
+
   index_type_value_type_dispatch(
-    args.A_crd.code(), args.B_vals.code(), DenseToCSRImpl<KIND>{}, args);
+    args.A_crd.code(), args.A_vals.code(), DenseToCSRImpl<KIND>{}, args);
 }
 
 }  // namespace sparse

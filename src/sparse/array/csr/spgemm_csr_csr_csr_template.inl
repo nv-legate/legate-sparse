@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
 #include "sparse/util/dispatch.h"
 #include "sparse/util/typedefs.h"
 
+#include <sstream>
+
 namespace sparse {
 
 using namespace legate;
@@ -33,7 +35,7 @@ struct SpGEMMCSRxCSRxCSRNNZImpl {
   template <Type::Code INDEX_CODE>
   void operator()(SpGEMMCSRxCSRxCSRNNZArgs& args) const
   {
-    using INDEX_TY = legate_type_of<INDEX_CODE>;
+    using INDEX_TY = type_of<INDEX_CODE>;
 
     auto nnz   = args.nnz.write_accessor<nnz_ty, 1>();
     auto B_pos = args.B_pos.read_accessor<Rect<1>, 1>();
@@ -54,8 +56,8 @@ struct SpGEMMCSRxCSRxCSRImpl {
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(SpGEMMCSRxCSRxCSRArgs& args) const
   {
-    using INDEX_TY = legate_type_of<INDEX_CODE>;
-    using VAL_TY   = legate_type_of<VAL_CODE>;
+    using INDEX_TY = type_of<INDEX_CODE>;
+    using VAL_TY   = type_of<VAL_CODE>;
 
     auto A_pos  = args.A_pos.read_write_accessor<Rect<1>, 1>();
     auto A_crd  = args.A_crd.write_accessor<INDEX_TY, 1>();
@@ -82,9 +84,9 @@ struct SpGEMMCSRxCSRxCSRImpl {
 };
 
 template <VariantKind KIND>
-static void spgemm_csr_csr_csr_nnz_template(TaskContext& context)
+static void spgemm_csr_csr_csr_nnz_template(TaskContext context)
 {
-  auto& inputs = context.inputs();
+  auto inputs = context.inputs();
   SpGEMMCSRxCSRxCSRNNZArgs args{
     context.outputs()[0],
     inputs[0],
@@ -92,14 +94,15 @@ static void spgemm_csr_csr_csr_nnz_template(TaskContext& context)
     inputs[2],
     inputs[3],
   };
+
   index_type_dispatch(args.B_crd.code(), SpGEMMCSRxCSRxCSRNNZImpl<KIND>{}, args);
 }
 
 template <VariantKind KIND>
-static void spgemm_csr_csr_csr_template(TaskContext& context)
+static void spgemm_csr_csr_csr_template(TaskContext context)
 {
-  auto& inputs  = context.inputs();
-  auto& outputs = context.outputs();
+  auto inputs  = context.inputs();
+  auto outputs = context.outputs();
   SpGEMMCSRxCSRxCSRArgs args{
     outputs[0],
     outputs[1],
@@ -111,6 +114,7 @@ static void spgemm_csr_csr_csr_template(TaskContext& context)
     inputs[4],
     inputs[5],
   };
+
   index_type_value_type_dispatch(
     args.A_crd.code(), args.A_vals.code(), SpGEMMCSRxCSRxCSRImpl<KIND>{}, args);
 }

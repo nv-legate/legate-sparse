@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE>
 struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::OMP, INDEX_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorWO<nnz_ty, 1>& nnz,
                   const AccessorRO<Rect<1>, 1>& B_pos,
@@ -37,7 +37,7 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::OMP, INDEX_CODE> {
                   const Rect<1>& C_crd_bounds)
   {
     auto num_threads = omp_get_max_threads();
-    auto kind        = Core::has_socket_mem ? Memory::SOCKET_MEM : Memory::SYSTEM_MEM;
+    auto kind        = legate::find_memory_kind_for_executing_processor();
 
     // Calculate A2_dim by looking at the min and max coordinates in
     // the provided partition of C.
@@ -91,8 +91,8 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::OMP, INDEX_CODE> {
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
-  using INDEX_TY = legate_type_of<INDEX_CODE>;
-  using VAL_TY   = legate_type_of<VAL_CODE>;
+  using INDEX_TY = type_of<INDEX_CODE>;
+  using VAL_TY   = type_of<VAL_CODE>;
 
   void operator()(const AccessorRW<Rect<1>, 1>& A_pos,
                   const AccessorWO<INDEX_TY, 1>& A_crd,
@@ -107,7 +107,7 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
                   const Rect<1>& C_crd_bounds)
   {
     auto num_threads = omp_get_max_threads();
-    auto kind        = Core::has_socket_mem ? Memory::SOCKET_MEM : Memory::SYSTEM_MEM;
+    auto kind        = legate::find_memory_kind_for_executing_processor();
 
     // Calculate A2_dim by looking at the min and max coordinates in
     // the provided partition of C.
@@ -166,12 +166,12 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
   }
 };
 
-/*static*/ void SpGEMMCSRxCSRxCSRNNZ::omp_variant(TaskContext& context)
+/*static*/ void SpGEMMCSRxCSRxCSRNNZ::omp_variant(TaskContext context)
 {
   spgemm_csr_csr_csr_nnz_template<VariantKind::OMP>(context);
 }
 
-/*static*/ void SpGEMMCSRxCSRxCSR::omp_variant(TaskContext& context)
+/*static*/ void SpGEMMCSRxCSRxCSR::omp_variant(TaskContext context)
 {
   spgemm_csr_csr_csr_template<VariantKind::OMP>(context);
 }

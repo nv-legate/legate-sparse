@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,13 @@ struct ZipToRect1ImplBody<VariantKind::CPU, VAL> {
                   const AccessorRO<VAL, 1>& hi,
                   const Rect<1>& rect)
   {
-    for (coord_t i = rect.lo[0]; i < rect.hi[0] + 1; i++) { output[i] = {lo[i], hi[i] - 1}; }
+    for (coord_t i = rect.lo[0]; i < rect.hi[0] + 1; i++) {
+      output[i] = Rect<1>{Point<1>{lo[i]}, Point<1>{hi[i] - 1}};
+    }
   }
 };
 
-/*static*/ void ZipToRect1::cpu_variant(TaskContext& context)
+/*static*/ void ZipToRect1::cpu_variant(TaskContext context)
 {
   zip_to_rect_1_template<VariantKind::CPU>(context);
 }

@@ -1,8 +1,15 @@
 {
   "packages" : {
-    "legate_core" : {
-      "git_url" : "https://github.com/rohany/legate.core.git",
-      "git_tag" : "dfd073c13393d99e3c38558f9ec0c2d221564811"
+    "legate" : {
+      "repo": "legate.core.internal",
+      "artifact_name": "${{ inputs.platform }}-${{ inputs.build-type }}-<<repo>>-python${{ inputs.python-version }}-${{ inputs.target-device }}-release-with_tests-${{ inputs.network }}-<<git_tag>>",
+      "org": "nv-legate",
+      "artifact_workflow": "ci-gh.yml",
+      "version": "24.11.00",
+      "git_url" : "git@github.com:nv-legate/legate.core.internal.git",
+      "git_shallow": false,
+      "always_download": false,
+      "git_tag" : "a7088375561c3f6cfa824b72a404e1a45c031ecd"
     }
   }
 }

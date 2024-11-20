@@ -1,4 +1,4 @@
-# Copyright 2022 NVIDIA Corporation
+# Copyright 2022-2024 NVIDIA Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,123 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# Portions of this file are also subject to the following license:
+#
+# The MIT License (MIT)
+#
+# Copyright (c) 2008-2015 PyAMG Developers
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import argparse
 
+# for some small data manipulations on host
 import numpy
-from benchmark import get_phase_procs, parse_common_args
-
-
-def stencil_grid(S, grid, dtype=None, format=None):
-    N_v = int(numpy.prod(grid))  # number of vertices in the mesh
-    N_s = int((S != 0).sum())  # number of nonzero stencil entries
-
-    # diagonal offsets
-    diags = np.zeros(N_s, dtype=int)
-
-    # compute index offset of each dof within the stencil
-    strides = numpy.cumprod([1] + list(reversed(grid)))[:-1]
-    indices = tuple(i.copy() for i in S.nonzero())
-    for i, s in zip(indices, S.shape):
-        i -= s // 2
-
-    for stride, coords in zip(strides, reversed(indices)):
-        diags += stride * coords
-
-    data = np.repeat(S[S != 0], N_v).reshape((N_s, N_v))
-
-    indices = np.vstack(indices).T
-
-    # zero boundary connections
-    for idx in range(indices.shape[0]):
-        # We do this instead of
-        #  for index, diag in zip(indices, data):
-        # to avoid unnecessary materialization into numpy arrays.
-        index = indices[idx, :]
-        diag = data[idx, :]
-        diag = diag.reshape(grid)
-        for n, i in enumerate(index):
-            if i > 0:
-                s = [slice(None)] * len(grid)
-                s[n] = slice(0, i)
-                s = tuple(s)
-                diag[s] = 0
-            elif i < 0:
-                s = [slice(None)] * len(grid)
-                s[n] = slice(i, None)
-                s = tuple(s)
-                diag[s] = 0
-
-    # remove diagonals that lie outside matrix
-    mask = abs(diags) < N_v
-    if not mask.all():
-        diags = diags[mask]
-        data = data[mask]
-
-    # sum duplicate diagonals
-    if len(np.unique(diags)) != len(diags):
-        new_diags = np.unique(diags)
-        new_data = np.zeros((len(new_diags), data.shape[1]), dtype=data.dtype)
-
-        for dia, dat in zip(diags, data):
-            n = np.searchsorted(new_diags, dia)
-            new_data[n, :] += dat
-
-        diags = new_diags
-        data = new_data
-
-    return sparse.dia_matrix((data, diags), shape=(N_v, N_v)).asformat(format)
-
-
-def poisson2D(N):
-    diag_size = N * N - 1
-    first = np.full((N - 1), -1.0)
-    chunks = np.concatenate([np.zeros(1), first])
-    diag_a = np.concatenate(
-        [first, np.tile(chunks, (diag_size - (N - 1)) // N)]
-    )
-    diag_g = -1.0 * np.ones(N * (N - 1))
-    diag_c = 4.0 * np.ones(N * N)
-
-    # We construct a sequence of main diagonal elements,
-    diagonals = [diag_g, diag_a, diag_c, diag_a, diag_g]
-    # and a sequence of positions of the diagonal entries relative to the main
-    # diagonal.
-    offsets = [-N, -1, 0, 1, N]
-
-    # Call to the diags routine; note that diags return a representation of the
-    # array; to explicitly obtain its ndarray realisation, the call to
-    # .toarray() is needed. Note how the matrix has dimensions (nx-2)*(nx-2).
-    # d2mat = diags(diagonals, offsets, dtype=np.float64).tocsr()
-    # TODO (rohany): We want to have this conversion occur in parallel so that
-    #  we can effectively weak scale. Unfortunately, I can't figure out how to
-    #  adapt the scipy.sparse DIA->CSC method to work for DIA->CSR conversions.
-    #  I made an attempt at using the transpose of the DIA matrix -> CSC -> CSR
-    #  via a final transpose, but it turns out the direct implementation of
-    #  transpose on DIA matrices uses alot of memory and is slow due to the use
-    #  of indirection copies. Since we know that this matrix is symmetric, we
-    #  directly use the DIA->CSC conversion, and then take the transpose to get
-    #  a CSR matrix back.
-    return sparse.diags(diagonals, offsets, dtype=np.float64).tocsc().T
-
-
-def diffusion2D(N, epsilon=1.0, theta=0.0):
-    eps = float(epsilon)  # for brevity
-    theta = float(theta)
-
-    C = np.cos(theta)
-    S = np.sin(theta)
-    CS = C * S
-    CC = C**2
-    SS = S**2
-
-    a = (-1 * eps - 1) * CC + (-1 * eps - 1) * SS + (3 * eps - 3) * CS
-    b = (2 * eps - 4) * CC + (-4 * eps + 2) * SS
-    c = (-1 * eps - 1) * CC + (-1 * eps - 1) * SS + (-3 * eps + 3) * CS
-    d = (-4 * eps + 2) * CC + (2 * eps - 4) * SS
-    e = (8 * eps + 8) * CC + (8 * eps + 8) * SS
-
-    stencil = np.array([[a, b, c], [d, e, d], [c, b, a]]) / 6.0
-    return stencil_grid(stencil, (N, N))
+from common import diffusion2D, get_phase_procs, parse_common_args, poisson2D
 
 
 def max_eigenvalue(A, iters=15):
@@ -162,17 +75,17 @@ class GMG(object):
     def __init__(self, A, shape, levels, smoother, gridop, machine):
         self.A = A
         self.shape = shape
-        self.N = numpy.product(self.shape)
+        self.N = numpy.prod(self.shape)
         self.levels = levels
         self.restriction_op = {
             "injection": injection_operator,
             "linear": linear_operator,
         }[gridop]
-        self.smoother = {"symgs": SYMGS, "jacobi": WeightedJacobi}[smoother]()
+        self.smoother = {"jacobi": WeightedJacobi}[smoother]()
         self.operators = self.compute_operators(A)
         self.temp = None
         self.machine = machine
-        self.proc_kind = machine.preferred_kind
+        self.proc_kind = machine.preferred_target
 
     def compute_operators(self, A):
         operators = []
@@ -180,7 +93,7 @@ class GMG(object):
         self.smoother.init_level_params(A, 0)
         for level in range(self.levels):
             R, dim = self.compute_restriction_level(dim)
-            P = R.T.tocsr()
+            P = R.T
             # assert sparse.issparse(P)
             A = R @ A @ P
             # assert sparse.issparse(A)
@@ -190,8 +103,9 @@ class GMG(object):
 
     def cycle(self, r):
         # Kick off the cycle with the top-level machine.
-        with self.machine:
-            return self._cycle(self.A, r, 0, self.machine)
+        # TODO (marsaev): there are issues with scoping
+        # disabling it for now
+        return self._cycle(self.A, r, 0, self.machine)
 
     def _cycle(self, A, r, level, machine):
         if level == self.levels - 1:
@@ -205,17 +119,15 @@ class GMG(object):
 
         # Restrict the residual.
         if use_legate:
-            coarse_r = R.dot(fine_r, spmv_domain_part=True)
+            # TODO (marsaev): there col-split splmv optimization
+            coarse_r = R.dot(fine_r)
         else:
             coarse_r = R.dot(fine_r)
 
         # Compute coarse solution using a subset of the machine.
-        ratio = (fine_r.shape[0] // coarse_r.shape[0]) // 2
-        num_procs = max(machine.count(self.proc_kind) // ratio, 1)
-        with machine[:num_procs]:
-            coarse_x = self._cycle(
-                coarse_A, coarse_r, level + 1, machine[:num_procs]
-            )
+        # TODO (marsaev): there are issues with scoping
+        # disabling it for now
+        coarse_x = self._cycle(coarse_A, coarse_r, level + 1, self.machine)
 
         fine_x = P @ coarse_x
         x_corrected = x + fine_x
@@ -231,19 +143,6 @@ class GMG(object):
         )
 
 
-class SYMGS(object):
-    def init_level_params(self, A, level):
-        pass
-
-    def __call__(self, A, r, x, level):
-        if x is None:
-            x = np.zeros_like(r)
-        symgs_c(A.indptr, A.indices, A.data, x, r)  # noqa: F821
-        return x
-
-    pre = post = coarse = __call__
-
-
 class WeightedJacobi(object):
     def __init__(self, omega=4.0 / 3.0):
         # Basically, similar solution to PyAMG.
@@ -256,11 +155,26 @@ class WeightedJacobi(object):
         # diagonal of A. sparse.eye doesn't have this nob, but we can take
         # the output of sparse.eye and mess with it to get the matrix
         # that we want.
-        D_inv_mat = sparse.eye(
+        D_inv_nnz = min(A.shape[0], A.shape[1])
+        D_inv_mat = sparse.csr_array(
+            (
+                np.ones(D_inv_nnz).astype(A.dtype),
+                (
+                    np.arange(D_inv_nnz).astype(sparse.coord_ty),
+                    np.arange(D_inv_nnz).astype(sparse.coord_ty),
+                ),
+            ),
+            shape=A.shape,
+            dtype=A.dtype,
+            copy=False,
+        )
+        """
+        sparse.eye(
             A.shape[0], n=A.shape[1], dtype=A.dtype, format="csr"
         )
+        """
         D_inv_mat.data = 1.0 / D_inv
-        spectral_radius = max_eigenvalue(A @ D_inv_mat)
+        spectral_radius = max_eigenvalue(A @ D_inv_mat, 1)
         omega = self._init_omega / spectral_radius
         self.level_params.append((omega, D_inv))
         assert len(self.level_params) - 1 == level
@@ -287,25 +201,21 @@ class WeightedJacobi(object):
 def injection_operator(fine_dim):
     fine_shape = (int(np.sqrt(fine_dim)),) * 2
     coarse_shape = fine_shape[0] // 2, fine_shape[1] // 2
-    coarse_dim = numpy.product(coarse_shape)
+    coarse_dim = numpy.prod(coarse_shape)
     Rp = np.arange(coarse_dim + 1)
     Rx = np.ones((coarse_dim,), dtype=np.float64)
     ij = np.arange(coarse_dim, dtype=np.int64)
     i = ij % coarse_shape[1]
     j = ij // coarse_shape[1]
     Rj = 2 * i + 2 * j * coarse_shape[1]
-    R = sparse.csr_matrix(
-        (Rx, Rj, Rp), shape=(coarse_dim, fine_dim), dtype=np.float64
-    )
+    R = sparse.csr_matrix((Rx, Rj, Rp), shape=(coarse_dim, fine_dim), dtype=np.float64)
     return R, coarse_dim
 
 
 def linear_operator(fine_dim):
-    import numpy
-
     fine_shape = (int(np.sqrt(fine_dim)),) * 2
     coarse_shape = fine_shape[0] // 2, fine_shape[1] // 2
-    coarse_dim = np.product(coarse_shape)
+    coarse_dim = np.prod(coarse_shape)
     # Construct CSR directly.
     Rp = numpy.empty(coarse_dim + 1, dtype=np.int64)
     # Get an upper bound on the total number of non-zeroes, and construct Rj
@@ -386,7 +296,7 @@ def required_driver_memory(N):
     NN = N * N
     fine_shape = (int(np.sqrt(NN)),) * 2
     coarse_shape = fine_shape[0] // 2, fine_shape[1] // 2
-    coarse_dim = numpy.product(coarse_shape)
+    coarse_dim = numpy.prod(coarse_shape)
     nnz = 9 * coarse_dim
     elements = nnz + coarse_dim + 1
     bytes = elements * 8
@@ -394,78 +304,117 @@ def required_driver_memory(N):
     print("Max required driver memory for N=%d is %fMB" % (N, mb))
 
 
-def execute(N, data, smoother, gridop, levels, maxiter, tol, verbose, timer):
+def print_diagnostics(operators):
+    """Print basic statistics about the multigrid hierarchy."""
+    output = "MultilevelSolver\n"
+    output += f"Number of Levels:     {len(operators)}\n"
+    # output += f"Operator Complexity: {operator_complexity(levels):6.3f}\n"
+    # output += f"Grid Complexity:     {grid_complexity(levels):6.3f}\n"
+
+    total_nnz = sum(level[1].nnz for level in operators)
+
+    #          123456712345678901 123456789012 123456789
+    #               0       10000        49600 [52.88%]
+    output += "  level   unknowns     nonzeros\n"
+    for n, level in enumerate(operators):
+        A = level[1]
+        ratio = 100 * A.nnz / total_nnz
+        output += f"{n:>6} {A.shape[1]:>11} {A.nnz:>12} [{ratio:2.2f}%]\n"
+
+    print(output)
+
+
+def execute(N, data, smoother, gridop, levels, maxiter, tol, verbose, warmup, timer):
     build, solve = get_phase_procs(use_legate)
+
+    if warmup:
+        tA = diffusion2D(64, epsilon=0.1, theta=np.pi / 4)
+        tB = tA.T
+        tC = tB @ tA  # noqa: F841
+
+    # Generate matrix
     timer.start()
-    with build:
-        if data == "poisson":
-            A = poisson2D(N).tocsr()
-            b = np.random.rand(N**2)
-        elif data == "diffusion":
-            A = diffusion2D(N).tocsr()
-            b = np.random.rand(N**2)
-        else:
-            raise NotImplementedError(data)
-        print(f"Data creation time: {timer.stop()} ms")
+    if data == "poisson":
+        A = poisson2D(N)
+        b = np.random.rand(N**2)
+    elif data == "diffusion":
+        A = diffusion2D(N)
+        b = np.random.rand(N**2)
+    else:
+        raise NotImplementedError(data)
+    print(f"GMG: {A.shape}")
+    print(f"Data creation time: {timer.stop()} ms")
 
-        assert (
-            smoother == "jacobi"
-        ), "Only Jacobi smoother is currently supported."
+    assert smoother == "jacobi", "Only Jacobi smoother is currently supported."
 
-        if verbose:
+    if verbose:
 
-            def callback(x):
-                print(f"Residual: {np.linalg.norm(b-A.matvec(x))}")
+        def callback(x):
+            print(f"Residual: {np.linalg.norm(b - (A @ x))}")
 
-        else:
-            callback = None
+    else:
+        callback = None
 
-        required_driver_memory(N)
-        timer.start()
-        mg_solver = GMG(
-            A=A,
-            shape=(N, N),
-            levels=levels,
-            smoother=smoother,
-            gridop=gridop,
-            machine=solve,
-        )
-        M = mg_solver.linear_operator()
-        print(f"GMG init time: {timer.stop()} ms")
+    required_driver_memory(N)
+    # Setup
+    timer.start()
+    mg_solver = GMG(
+        A=A,
+        shape=(N, N),
+        levels=levels,
+        smoother=smoother,
+        gridop=gridop,
+        machine=solve,
+    )
+    M = mg_solver.linear_operator()
+    print(f"GMG init time: {timer.stop()} ms")
 
-    with solve:
-        # Warm up the runtime.
-        float(
-            np.linalg.norm(
-                A.dot(
-                    np.zeros(
-                        A.shape[1],
-                    )
+    print_diagnostics(mg_solver.operators)
+
+    # Warm up the runtime.
+    float(
+        np.linalg.norm(
+            A.dot(
+                np.zeros(
+                    A.shape[1],
                 )
             )
         )
-        float(
-            np.linalg.norm(
-                M.matvec(
-                    np.zeros(
-                        M.shape[1],
-                    )
+    )
+    float(
+        np.linalg.norm(
+            M.matvec(
+                np.zeros(
+                    M.shape[1],
                 )
             )
         )
-        # Make another call to random here as well.
-        float(np.linalg.norm(np.random.rand(b.shape[0])))
-        timer.start()
-        x, iters = linalg.cg(
-            A, b, tol=tol, maxiter=maxiter, M=M, callback=callback
+    )
+    # Make another call to random here as well.
+    float(np.linalg.norm(np.random.rand(b.shape[0])))
+
+    # Solve
+    timer.start()
+    x, iters = linalg.cg(A, b, rtol=tol, maxiter=maxiter, M=M, callback=callback)
+    total = timer.stop()
+
+    norm_ini = np.linalg.norm(b)
+    norm_res = np.linalg.norm(b - (A @ x))
+
+    # Check convergence with relative tolerance
+    if norm_res <= norm_ini * tol:
+        print(
+            f"Converged in {iters} iterations, final residual relative norm:"
+            f" {norm_res/norm_ini}"  # noqa: E226
         )
-        total = timer.stop()
-        if tol <= np.linalg.norm(x):
-            print("Converged in %d iterations" % iters)
-        else:
-            print("Failed to converge in %d iterations" % iters)
-        print(f"Solve Time: {total} ms")
-        print(f"Iterations / sec: {iters / (total / 1000.0)}")
+    else:
+        print(
+            f"Failed to converge in {iters} iterations, final residual relative norm:"
+            f" {norm_res/norm_ini}"  # noqa: E226
+        )
+
+    print(f"Solve Time: {total} ms")
+    print(f"Iteration time: {total / iters} ms")
 
 
 if __name__ == "__main__":
@@ -491,7 +440,7 @@ if __name__ == "__main__":
         "-s",
         "--smoother",
         dest="smoother",
-        choices=["jacobi", "symgs"],
+        choices=["jacobi"],
         type=str,
         default="jacobi",
         help="Smoother to use.",
@@ -517,7 +466,7 @@ if __name__ == "__main__":
         "-m",
         "--maxiter",
         type=int,
-        default=None,
+        default=200,
         dest="maxiter",
         help="bound the maximum number of iterations",
     )
@@ -533,7 +482,15 @@ if __name__ == "__main__":
         type=float,
         default=1e-10,
         dest="tol",
-        help="convergence check threshold",
+        help="Convergence relative norm check threshold",
+    )
+
+    parser.add_argument(
+        "-w",
+        "--warmup",
+        dest="warmup",
+        action="store_true",
+        help="Perform some Warmup operations before running timings",
     )
 
     args, _ = parser.parse_known_args()

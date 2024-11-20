@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,12 @@ namespace sparse {
 
 class UpcastFutureToRegion : public SparseTask<UpcastFutureToRegion> {
  public:
-  static const int TASK_ID = LEGATE_SPARSE_UPCAST_FUTURE_TO_REGION;
-  static void cpu_variant(legate::TaskContext& ctx);
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_UPCAST_FUTURE_TO_REGION};
+  static void cpu_variant(legate::TaskContext ctx);
 
  private:
   template <typename T>
-  static void cpu_variant_impl(legate::TaskContext& ctx);
+  static void cpu_variant_impl(legate::TaskContext ctx);
 };
 
 }  // namespace sparse

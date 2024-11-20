@@ -1,4 +1,4 @@
-/* Copyright 2022 NVIDIA Corporation
+/* Copyright 2022-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ struct UnZipRect1ImplBody<VariantKind::CPU> {
   }
 };
 
-/*static*/ void UnZipRect1::cpu_variant(TaskContext& context)
+/*static*/ void UnZipRect1::cpu_variant(TaskContext context)
 {
   unzip_rect_1_template<VariantKind::CPU>(context);
 }
