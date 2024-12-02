@@ -56,9 +56,7 @@ def wrap(func: AnyCallable) -> Any:
     return wrapper
 
 
-def clone_module(
-    origin_module: ModuleType, new_globals: dict[str, Any]
-) -> None:
+def clone_module(origin_module: ModuleType, new_globals: dict[str, Any]) -> None:
     """Copy attributes from one module to another, excluding submodules
 
     Function types are wrapped with a decorator to report API calls. All

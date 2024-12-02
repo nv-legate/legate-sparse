@@ -49,14 +49,17 @@ Follow the steps in this section.
 
 ## Use conda packages
 
+The `legate-sparse` conda package already depends on `legate` and `cupynumeric`,
+and it will install these dependencies automatically.
+
 To create a new environment and install: 
 ```
-conda create -n myenv -c conda-forge -c legate cupynumeric legate-sparse
+conda create -n myenv -c conda-forge -c legate-sparse
 ```
 
 or to install in an existing environment:
 ```
-conda install -c conda-forge -c legate cupynumeric legate-sparse
+conda install -c conda-forge -c legate-sparse
 ```
 
 # Usage

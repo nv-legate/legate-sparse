@@ -94,9 +94,7 @@ class Runtime:
 
     # only OpCode
     def create_auto_task(self, OpCode) -> AutoTask:
-        return self.legate_runtime.create_auto_task(
-            self.sparse_library, OpCode
-        )
+        return self.legate_runtime.create_auto_task(self.sparse_library, OpCode)
 
     # OpCode and launch domains
     def create_manual_task(self, OpCode, *args) -> ManualTask:

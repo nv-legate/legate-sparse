@@ -19,11 +19,7 @@ from enum import IntEnum, unique
 from typing import Any, cast
 
 import cffi  # type: ignore
-from legate.core import (  # type: ignore[attr-defined]
-    Library,
-    get_legate_runtime,
-    types,
-)
+from legate.core import Library, get_legate_runtime, types  # type: ignore[attr-defined]
 
 
 class _LegateSparseSharedLib:
@@ -83,17 +79,13 @@ class LegateSparseLib(Library):
         self.shared_object = cast(_LegateSparseSharedLib, shared_lib)
 
     def register(self) -> None:
-        callback = getattr(
-            self.shared_object, "legate_sparse_perform_registration"
-        )
+        callback = getattr(self.shared_object, "legate_sparse_perform_registration")
         callback()
 
     def get_shared_library(self) -> str:
         from legate_sparse.install_info import libpath
 
-        return os.path.join(
-            libpath, "liblegate_sparse" + self.get_library_extension()
-        )
+        return os.path.join(libpath, "liblegate_sparse" + self.get_library_extension())
 
     def get_legate_library(self) -> Library:
         return get_legate_runtime().find_library(self.name)
