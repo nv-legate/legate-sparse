@@ -60,7 +60,7 @@ include(rapids-find)
 ###################################
 # Project
 
-set(legate_sparse_version 24.11.01)
+set(legate_sparse_version 25.01.00)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CUDA_FLAGS_DEBUG "-O0 -g")

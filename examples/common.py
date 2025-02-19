@@ -205,7 +205,6 @@ def parse_common_args():
 # we construct csr arrya directly - might be slightly faster
 def banded_matrix(N, nnz_per_row, from_diags=False):
     if from_diags:
-        print("Banded matrices will be generated using sparse.diags API")
         return sparse.diags(
             [1] * nnz_per_row,
             [x - (nnz_per_row // 2) for x in range(nnz_per_row)],
@@ -214,7 +213,6 @@ def banded_matrix(N, nnz_per_row, from_diags=False):
             dtype=np.float64,
         )
     else:
-        print("Banded matrices will be manually generated")
         assert N > nnz_per_row
         assert nnz_per_row % 2 == 1
         half_nnz = nnz_per_row // 2

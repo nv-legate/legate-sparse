@@ -46,8 +46,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import cupynumeric
-from legate.core import LogicalStore  # type: ignore[attr-defined]
-from legate.core import align  # type: ignore[attr-defined]
+from legate.core import LogicalStore, align
 
 from .config import SparseOpCode, rect1
 from .runtime import runtime

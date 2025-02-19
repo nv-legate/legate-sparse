@@ -123,62 +123,62 @@ set_cpu_arch_flags(legate_sparse_CXX_OPTIONS)
 
 
 list(APPEND legate_sparse_SOURCES
-  src/sparse/projections.cc
+  src/legate_sparse/projections.cc
 
-  src/sparse/mapper/mapper.cc
+  src/legate_sparse/mapper/mapper.cc
 
-  src/sparse/array/conv/dense_to_csr.cc
-  src/sparse/array/conv/csr_to_dense.cc
-  src/sparse/array/conv/pos_to_coordinates.cc
+  src/legate_sparse/array/conv/dense_to_csr.cc
+  src/legate_sparse/array/conv/csr_to_dense.cc
+  src/legate_sparse/array/conv/pos_to_coordinates.cc
 
-  src/sparse/array/csr/get_diagonal.cc
-  src/sparse/array/csr/spmv.cc
-  src/sparse/array/csr/spgemm_csr_csr_csr.cc
+  src/legate_sparse/array/csr/get_diagonal.cc
+  src/legate_sparse/array/csr/spmv.cc
+  src/legate_sparse/array/csr/spgemm_csr_csr_csr.cc
   
-  src/sparse/array/util/unzip_rect.cc
-  src/sparse/array/util/zip_to_rect.cc
+  src/legate_sparse/array/util/unzip_rect.cc
+  src/legate_sparse/array/util/zip_to_rect.cc
 
-  src/sparse/partition/fast_image_partition.cc
+  src/legate_sparse/partition/fast_image_partition.cc
 
-  src/sparse/io/mtx_to_coo.cc
-  src/sparse/linalg/axpby.cc
+  src/legate_sparse/io/mtx_to_coo.cc
+  src/legate_sparse/linalg/axpby.cc
 )
 
 if(Legion_USE_OpenMP)
   list(APPEND legate_sparse_SOURCES
-    src/sparse/array/conv/dense_to_csr_omp.cc
-    src/sparse/array/conv/csr_to_dense_omp.cc
-    src/sparse/array/conv/pos_to_coordinates_omp.cc
+    src/legate_sparse/array/conv/dense_to_csr_omp.cc
+    src/legate_sparse/array/conv/csr_to_dense_omp.cc
+    src/legate_sparse/array/conv/pos_to_coordinates_omp.cc
 
-    src/sparse/array/csr/get_diagonal_omp.cc
-    src/sparse/array/csr/spmv_omp.cc
-    src/sparse/array/csr/spgemm_csr_csr_csr_omp.cc
+    src/legate_sparse/array/csr/get_diagonal_omp.cc
+    src/legate_sparse/array/csr/spmv_omp.cc
+    src/legate_sparse/array/csr/spgemm_csr_csr_csr_omp.cc
 
-    src/sparse/array/util/unzip_rect_omp.cc
-    src/sparse/array/util/zip_to_rect_omp.cc
+    src/legate_sparse/array/util/unzip_rect_omp.cc
+    src/legate_sparse/array/util/zip_to_rect_omp.cc
 
-    src/sparse/linalg/axpby_omp.cc
+    src/legate_sparse/linalg/axpby_omp.cc
   )
 endif()
 
 if(Legion_USE_CUDA)
   list(APPEND legate_sparse_SOURCES
-    src/sparse/cudalibs.cu 
+    src/legate_sparse/cudalibs.cu 
 
-    src/sparse/array/conv/dense_to_csr.cu
-    src/sparse/array/conv/csr_to_dense.cu
-    src/sparse/array/conv/pos_to_coordinates.cu
+    src/legate_sparse/array/conv/dense_to_csr.cu
+    src/legate_sparse/array/conv/csr_to_dense.cu
+    src/legate_sparse/array/conv/pos_to_coordinates.cu
 
-    src/sparse/array/csr/get_diagonal.cu
-    src/sparse/array/csr/spmv.cu
-    src/sparse/array/csr/spgemm_csr_csr_csr.cu
+    src/legate_sparse/array/csr/get_diagonal.cu
+    src/legate_sparse/array/csr/spmv.cu
+    src/legate_sparse/array/csr/spgemm_csr_csr_csr.cu
 
-    src/sparse/array/util/unzip_rect.cu
-    src/sparse/array/util/zip_to_rect.cu
+    src/legate_sparse/array/util/unzip_rect.cu
+    src/legate_sparse/array/util/zip_to_rect.cu
     
-    src/sparse/partition/fast_image_partition.cu
+    src/legate_sparse/partition/fast_image_partition.cu
 
-    src/sparse/linalg/axpby.cu
+    src/legate_sparse/linalg/axpby.cu
   )
 endif()
 
@@ -188,7 +188,7 @@ list(APPEND legate_sparse_SOURCES
   # This must always be the last file!
   # It guarantees we do our registration callback
   # only after all task variants are recorded
-  src/sparse/sparse.cc
+  src/legate_sparse/sparse.cc
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -293,7 +293,7 @@ install(TARGETS legate_sparse
         EXPORT legate-sparse-exports)
 
 install(
-  FILES src/sparse/sparse_c.h
+  FILES src/legate_sparse/sparse_c.h
         #TODO: ?
         #${CMAKE_CURRENT_BINARY_DIR}/include/cupynumeric/version_config.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legate_sprase)

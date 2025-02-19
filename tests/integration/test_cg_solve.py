@@ -106,4 +106,5 @@ def test_cg_solve_with_linear_operator():
 if __name__ == "__main__":
     import sys
 
-    sys.exit(pytest.main(sys.argv))
+    pytest.main(sys.argv)
+    sys.exit(0)

@@ -18,7 +18,7 @@ from typing import Any
 
 import cupynumeric
 import numpy
-from legate.core import LogicalStore  # type: ignore[attr-defined]
+from legate.core import LogicalStore
 
 import legate_sparse
 

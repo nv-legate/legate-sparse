@@ -19,7 +19,7 @@ from enum import IntEnum, unique
 from typing import Any, cast
 
 import cffi  # type: ignore
-from legate.core import Library, get_legate_runtime, types  # type: ignore[attr-defined]
+from legate.core import Library, get_legate_runtime, types
 
 
 class _LegateSparseSharedLib:

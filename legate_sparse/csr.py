@@ -50,12 +50,7 @@ import warnings
 import cupynumeric
 import numpy
 import scipy  # type: ignore
-from legate.core import ImageComputationHint  # type: ignore[attr-defined]
-from legate.core import Shape  # type: ignore[attr-defined]
-from legate.core import align  # type: ignore[attr-defined]
-from legate.core import broadcast  # type: ignore[attr-defined]
-from legate.core import image  # type: ignore[attr-defined]
-from legate.core import types  # type: ignore[attr-defined]
+from legate.core import ImageComputationHint, Shape, align, broadcast, image, types
 
 from .base import (
     CompressedBase,

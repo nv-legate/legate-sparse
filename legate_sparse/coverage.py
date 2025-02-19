@@ -18,7 +18,7 @@ from functools import wraps
 from types import FunctionType, MethodDescriptorType, MethodType, ModuleType
 from typing import Any, Container, Mapping, Optional, cast
 
-from legate.core import track_provenance  # type: ignore[attr-defined]
+from legate.core import track_provenance
 from typing_extensions import Protocol
 
 MOD_INTERNAL = {"__dir__", "__getattr__"}

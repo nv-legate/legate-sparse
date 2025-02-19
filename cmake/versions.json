@@ -1,15 +1,22 @@
 {
   "packages" : {
     "legate" : {
-      "repo": "legate.core.internal",
-      "artifact_name": "${{ inputs.platform }}-${{ inputs.build-type }}-<<repo>>-python${{ inputs.python-version }}-${{ inputs.target-device }}-release-with_tests-${{ inputs.network }}-<<git_tag>>",
+      "repo": "legate.internal",
       "org": "nv-legate",
-      "artifact_workflow": "ci-gh.yml",
-      "version": "24.11.01",
-      "git_url" : "git@github.com:nv-legate/legate.core.internal.git",
+      "version": "25.01.00",
+      "git_url" : "git@github.com:nv-legate/legate.internal.git",
       "git_shallow": false,
       "always_download": false,
-      "git_tag" : "29368dc25a97579dc8669aeb81322504a8c6639a"
+      "git_tag" : "c9748050eed8f6087fc2ecb86ff7eb2b5f3edb45"
+    },
+    "cupynumeric" : {
+      "repo": "cupynumeric.internal",
+      "org": "nv-legate",
+      "version": "25.01.00",
+      "git_url" : "git@github.com:nv-legate/cupynumeric.internal",
+      "git_shallow": false,
+      "always_download": false,
+      "git_tag" : "0464776f098f7a54c1341cb3c19b3aa5812f658f"
     }
   }
 }

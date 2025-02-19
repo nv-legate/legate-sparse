@@ -17,8 +17,8 @@
 execute_process(
   COMMAND ${CMAKE_C_COMPILER}
     -E -DLEGATE_USE_PYTHON_CFFI
-    -I "${CMAKE_CURRENT_LIST_DIR}/../src/sparse"
-    -P "${CMAKE_CURRENT_LIST_DIR}/../src/sparse/sparse_c.h"
+    -I "${CMAKE_CURRENT_LIST_DIR}/../src/legate_sparse"
+    -P "${CMAKE_CURRENT_LIST_DIR}/../src/legate_sparse/sparse_c.h"
   ECHO_ERROR_VARIABLE
   OUTPUT_VARIABLE header
   COMMAND_ERROR_IS_FATAL ANY

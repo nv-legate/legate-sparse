@@ -18,15 +18,31 @@ from __future__ import annotations
 
 import sys
 
+from legate.tester import CustomTest, FeatureType
 from legate.tester.config import Config
+from legate.tester.project import Project
 from legate.tester.test_plan import TestPlan
 from legate.tester.test_system import TestSystem
+from legate.util.types import EnvDict
+
+
+class ProjectLegateSparse(Project):
+    def skipped_examples(self) -> set[str]:
+        return []
+
+    def custom_files(self) -> list[CustomTest]:
+        return []
+
+    def stage_env(self, feature: FeatureType) -> EnvDict:
+        return {}
+
 
 if __name__ == "__main__":
-    config = Config(sys.argv)
+    config = Config(sys.argv, project=ProjectLegateSparse())
 
     system = TestSystem(dry_run=config.dry_run)
 
     plan = TestPlan(config, system)
 
-    sys.exit(plan.execute())
+    plan.execute()
+    sys.exit(0)

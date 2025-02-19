@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from legate.core import track_provenance  # type: ignore[attr-defined]
-from legate.core import types  # type: ignore[attr-defined]
+from legate.core import track_provenance, types
 
 from .config import SparseOpCode
 from .csr import csr_array

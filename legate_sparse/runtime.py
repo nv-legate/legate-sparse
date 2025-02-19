@@ -16,14 +16,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from legate.core import AutoTask  # type: ignore[attr-defined]
-from legate.core import LogicalStore  # type: ignore[attr-defined]
-from legate.core import ManualTask  # type: ignore[attr-defined]
-from legate.core import Shape  # type: ignore[attr-defined]
-from legate.core import TaskTarget  # type: ignore[attr-defined]
-from legate.core import get_legate_runtime  # type: ignore[attr-defined]
-from legate.core import get_machine  # type: ignore[attr-defined]
-from legate.core import types  # type: ignore[attr-defined]
+from legate.core import (
+    AutoTask,
+    LogicalStore,
+    ManualTask,
+    Shape,
+    TaskTarget,
+    get_legate_runtime,
+    get_machine,
+    types,
+)
 
 from .config import SparseOpCode, _library
 

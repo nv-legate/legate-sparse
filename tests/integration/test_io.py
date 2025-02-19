@@ -12,20 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
 import cupynumeric as np
 import pytest
 import scipy.io as sci_io
-from utils.common import test_mtx_files
 
-# import legate_sparse as sparse
 import legate_sparse.io as legate_io
 
+TEST_DIR = Path(__file__).parent.parent
 
-@pytest.mark.parametrize("filename", test_mtx_files)
-def test_mmread(filename):
-    arr = legate_io.mmread(filename)
-    s = sci_io.mmread(filename)
-    assert np.array_equal(arr.todense(), s.todense())
+
+@pytest.fixture
+def test_mtx_files():
+    mtx_files = [
+        "test.mtx",
+        "GlossGT.mtx",
+        "Ragusa18.mtx",
+        "cage4.mtx",
+        "karate.mtx",
+    ]
+    return [str(TEST_DIR / "testdata" / mtx_file) for mtx_file in mtx_files]
+
+
+def test_mmread(test_mtx_files):
+    for mtx_file in test_mtx_files:
+        arr = legate_io.mmread(mtx_file)
+        s = sci_io.mmread(mtx_file)
+        assert np.array_equal(arr.todense(), s.todense())
 
 
 if __name__ == "__main__":
