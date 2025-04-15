@@ -24,9 +24,8 @@
 namespace sparse {
 
 template <legate::Type::Code INDEX_TY_CODE, typename Functor, typename... Fnargs>
-constexpr decltype(auto) value_type_dispatch_from_index(legate::Type::Code value_type,
-                                                        Functor f,
-                                                        Fnargs&&... args)
+constexpr decltype(auto) value_type_floating_point_dispatch_from_index(
+  legate::Type::Code value_type, Functor f, Fnargs&&... args)
 {
   // Dispatch on the supported value types, conditioned on the index types.
   switch (value_type) {
@@ -51,6 +50,72 @@ constexpr decltype(auto) value_type_dispatch_from_index(legate::Type::Code value
   assert(false);
   return f.template operator()<INDEX_TY_CODE, legate::Type::Code::FLOAT32>(
     std::forward<Fnargs>(args)...);
+}
+
+template <legate::Type::Code INDEX_TY_CODE, typename Functor, typename... Fnargs>
+constexpr decltype(auto) value_type_dispatch_from_index(legate::Type::Code value_type,
+                                                        Functor f,
+                                                        Fnargs&&... args)
+{
+  // Dispatch on the supported value types, conditioned on the index types.
+  switch (value_type) {
+    case legate::Type::Code::BOOL: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::BOOL>(
+        std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::INT32: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::INT32>(
+        std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::INT64: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::INT64>(
+        std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::FLOAT32: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::FLOAT32>(
+        std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::FLOAT64: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::FLOAT64>(
+        std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::COMPLEX64: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::COMPLEX64>(
+        std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::COMPLEX128: {
+      return f.template operator()<INDEX_TY_CODE, legate::Type::Code::COMPLEX128>(
+        std::forward<Fnargs>(args)...);
+    }
+    default: break;
+  }
+  assert(false);
+  return f.template operator()<INDEX_TY_CODE, legate::Type::Code::FLOAT32>(
+    std::forward<Fnargs>(args)...);
+}
+
+template <typename Functor, typename... Fnargs>
+constexpr decltype(auto) index_type_floating_point_value_type_dispatch(
+  legate::Type::Code index_type, legate::Type::Code value_type, Functor f, Fnargs&&... args)
+{
+  // First dispatch onto the index type.
+  switch (index_type) {
+    case legate::Type::Code::INT32: {
+      return value_type_floating_point_dispatch_from_index<legate::Type::Code::INT32,
+                                                           Functor,
+                                                           Fnargs...>(value_type, f, args...);
+    }
+    case legate::Type::Code::INT64: {
+      return value_type_floating_point_dispatch_from_index<legate::Type::Code::INT64,
+                                                           Functor,
+                                                           Fnargs...>(value_type, f, args...);
+    }
+    default: break;
+  }
+  assert(false);
+  return value_type_floating_point_dispatch_from_index<legate::Type::Code::INT32,
+                                                       Functor,
+                                                       Fnargs...>(value_type, f, args...);
 }
 
 template <typename Functor, typename... Fnargs>
@@ -98,6 +163,39 @@ template <typename Functor, typename... Fnargs>
 constexpr decltype(auto) value_type_dispatch(legate::Type::Code value_type,
                                              Functor f,
                                              Fnargs&&... args)
+{
+  switch (value_type) {
+    case legate::Type::Code::BOOL: {
+      return f.template operator()<legate::Type::Code::BOOL>(std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::INT32: {
+      return f.template operator()<legate::Type::Code::INT32>(std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::INT64: {
+      return f.template operator()<legate::Type::Code::INT64>(std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::FLOAT32: {
+      return f.template operator()<legate::Type::Code::FLOAT32>(std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::FLOAT64: {
+      return f.template operator()<legate::Type::Code::FLOAT64>(std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::COMPLEX64: {
+      return f.template operator()<legate::Type::Code::COMPLEX64>(std::forward<Fnargs>(args)...);
+    }
+    case legate::Type::Code::COMPLEX128: {
+      return f.template operator()<legate::Type::Code::COMPLEX128>(std::forward<Fnargs>(args)...);
+    }
+    default: break;
+  }
+  assert(false);
+  return f.template operator()<legate::Type::Code::FLOAT32>(std::forward<Fnargs>(args)...);
+}
+
+template <typename Functor, typename... Fnargs>
+constexpr decltype(auto) value_type_floating_point_dispatch(legate::Type::Code value_type,
+                                                            Functor f,
+                                                            Fnargs&&... args)
 {
   switch (value_type) {
     case legate::Type::Code::FLOAT32: {

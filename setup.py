@@ -38,7 +38,7 @@ os.environ["CMAKE_ARGS"] = " ".join(cmake_flags)
 
 setup(
     name="legate-sparse",
-    version="25.01.00",
+    version="25.03.00",
     description="An Aspiring Drop-In Replacement for SciPy Sparse module at Scale",
     author="NVIDIA Corporation",
     license="Apache 2.0",

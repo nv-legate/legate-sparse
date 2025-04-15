@@ -59,9 +59,6 @@ class Runtime:
         self.legate_runtime = get_legate_runtime()
         self.legate_machine = get_machine()
 
-        self.dynamic_projection_functor_id = 1
-        self.proj_fn_1d_to_2d_cache = {}
-
         # Load all the necessary CUDA libraries if we have GPUs.
         if self.num_gpus > 0:
             # TODO (rohany): Also handle destroying the cuda libraries when the

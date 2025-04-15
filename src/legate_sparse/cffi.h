@@ -32,6 +32,9 @@ enum LegateSparseOpCode {
   // Operations on matrices that aren't quite tensor algebra related.
   LEGATE_SPARSE_CSR_DIAGONAL,
 
+  // Indexing a CSR matrix with another CSR matrix
+  LEGATE_SPARSE_CSR_INDEXING_CSR,
+
   // Linear algebra operations
   LEGATE_SPARSE_CSR_SPMV_ROW_SPLIT,
   LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_NNZ,
@@ -41,6 +44,9 @@ enum LegateSparseOpCode {
   // Dense linear algebra tasks needed for things
   // like iterative linear solvers.
   LEGATE_SPARSE_AXPBY,
+
+  // nonzero API
+  LEGATE_SPARSE_NONZERO,
 
   // Utility tasks.
   LEGATE_SPARSE_ZIP_TO_RECT_1,
@@ -54,12 +60,6 @@ enum LegateSparseOpCode {
   LEGATE_SPARSE_UNLOAD_CUDALIBS,
 
   LEGATE_SPARSE_LAST_TASK,  // must be last
-};
-
-enum LegateSparseProjectionFunctors {
-  _LEGATE_SPARSE_PROJ_FN_BASE = 0,
-  LEGATE_SPARSE_PROJ_FN_1D_TO_2D,
-  LEGATE_SPARSE_LAST_PROJ_FN,  // must be last
 };
 
 #endif  // __LEGATE_SPARSE_CFFI_H__

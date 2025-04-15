@@ -17,6 +17,7 @@
 #include "legate_sparse/array/csr/spgemm_csr_csr_csr.h"
 #include "legate_sparse/array/csr/spgemm_csr_csr_csr_template.inl"
 #include "legate_sparse/util/thrust_allocator.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #include <omp.h>
 #include <thrust/extrema.h>
@@ -54,8 +55,8 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::OMP, INDEX_CODE> {
     // Next, initialize the deferred buffers ourselves, instead of using
     // Realm fills (which tend to be slower).
     auto size            = A2_dim * num_threads;
-    auto index_list_all  = legate::create_buffer<INDEX_TY, 1>(size, kind);
-    auto already_set_all = legate::create_buffer<bool, 1>(size, kind);
+    auto index_list_all  = CREATE_BUFFER(INDEX_TY, size, kind, "index_list_all");
+    auto already_set_all = CREATE_BUFFER(bool, size, kind, "already_set_all");
 #pragma omp parallel for schedule(static)
     for (INDEX_TY i = 0; i < A2_dim * num_threads; i++) {
       index_list_all[i]  = 0;
@@ -127,9 +128,9 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
     // Next, initialize the deferred buffers ourselves, instead of using
     // Realm fills (which tend to be slower).
     auto size            = A2_dim * num_threads;
-    auto index_list_all  = legate::create_buffer<INDEX_TY, 1>(size, kind);
-    auto already_set_all = legate::create_buffer<bool, 1>(size, kind);
-    auto workspace_all   = legate::create_buffer<VAL_TY, 1>(size, kind);
+    auto index_list_all  = CREATE_BUFFER(INDEX_TY, size, kind, "index_list_all");
+    auto already_set_all = CREATE_BUFFER(bool, size, kind, "already_set_all");
+    auto workspace_all   = CREATE_BUFFER(VAL_TY, size, kind, "workspace_all");
 #pragma omp parallel for schedule(static)
     for (INDEX_TY i = 0; i < A2_dim * num_threads; i++) {
       index_list_all[i]  = 0;

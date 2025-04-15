@@ -15,7 +15,6 @@
  */
 
 #include "legate_sparse/sparse.h"
-#include "projections.h"
 
 #include "legate_sparse/mapper/mapper.h"
 
@@ -40,10 +39,11 @@ void registration_callback()
   //  to keep this in line with the Python import since there seems to be a
   //  cyclic dependency.
   // config.max_tasks = LEGATE_SPARSE_LAST_TASK;
-  // config.max_projections = LEGATE_SPARSE_LAST_PROJ_FN;
   config.max_tasks = 100;
+  // SJ; Sat 11 Jan 2025 01:16:31 PM PST
+  // Do we need to set max_projections if we don't use any projection functors?
   // TODO (rohany): We're dynamically generating projections... How does cupynumeric handle this?
-  config.max_projections = 1000;
+  // config.max_projections = 1000;
 
   auto options = VariantOptions{}.with_has_allocations(false);
   auto ctx     = Runtime::get_runtime()->create_library(
@@ -53,11 +53,6 @@ void registration_callback()
     {{VariantCode::CPU, options}, {VariantCode::GPU, options}, {VariantCode::OMP, options}});
 
   Sparse::get_registrar().register_all_tasks(ctx);
-
-  auto runtime = Legion::Runtime::get_runtime();
-  auto proj_id = ctx.get_projection_id(LEGATE_SPARSE_PROJ_FN_1D_TO_2D);
-  auto functor = new Promote1Dto2DFunctor(runtime);
-  runtime->register_projection_functor(proj_id, functor, true /*silence warnings*/);
 }
 
 }  // namespace sparse

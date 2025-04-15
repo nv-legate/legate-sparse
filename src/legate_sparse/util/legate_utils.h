@@ -17,6 +17,8 @@
 #pragma once
 
 #include "legate/utilities/typedefs.h"
+#include "realm/logging.h"
+#include <string_view>
 
 namespace sparse {
 
@@ -26,5 +28,35 @@ legate::Rect<1> create_1d_extents(const T& lo, const Q& hi)
 {
   return legate::Rect<1>{legate::Point<1>{lo}, legate::Point<1>{hi}};
 }
+
+inline Realm::Logger& get_logger()
+{
+  static Realm::Logger logger("legate-sparse");
+  return logger;
+}
+
+// Remove the path and use only the filename
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+// Macros for buffer allocation logging
+#if ENABLE_BUFFER_LOGGING
+#define CREATE_BUFFER(T, size, mem, desc)                                                       \
+  [&]() {                                                                                       \
+    auto buf = legate::create_buffer<T, 1>(size, mem);                                          \
+    get_logger().print() << "Buffer allocation at " << __FILENAME__ << ":" << __LINE__          \
+                         << " - Size: " << size << " Type: " << #T << " Description: " << desc; \
+    return buf;                                                                                 \
+  }()
+#else
+#define CREATE_BUFFER(T, size, mem, desc) legate::create_buffer<T, 1>(size, mem)
+#endif
+
+#if ENABLE_BUFFER_LOGGING
+#define LOG_BUFFER(T, size, desc)                                                    \
+  get_logger().print() << "Buffer allocation at " << __FILENAME__ << ":" << __LINE__ \
+                       << " - Size: " << size << " Type: " << #T << " Description: " << desc
+#else
+#define LOG_BUFFER(T, size, desc)
+#endif
 
 }  // namespace sparse

@@ -3,20 +3,22 @@
     "legate" : {
       "repo": "legate.internal",
       "org": "nv-legate",
-      "version": "25.01.00",
+      "version": "25.03.02",
       "git_url" : "git@github.com:nv-legate/legate.internal.git",
       "git_shallow": false,
       "always_download": false,
-      "git_tag" : "c9748050eed8f6087fc2ecb86ff7eb2b5f3edb45"
+      "git_tag" : "75dc0a92bbd2dfb79b6b680a0f37cbd0370d0181",
+      "anaconda_label": "main"
     },
     "cupynumeric" : {
       "repo": "cupynumeric.internal",
       "org": "nv-legate",
-      "version": "25.01.00",
+      "version": "25.03.02",
       "git_url" : "git@github.com:nv-legate/cupynumeric.internal",
       "git_shallow": false,
       "always_download": false,
-      "git_tag" : "0464776f098f7a54c1341cb3c19b3aa5812f658f"
+      "git_tag" : "1fa45603c560068508c3be2e0df45aec62359019",
+      "anaconda_label": "experimental"
     }
   }
 }

@@ -16,6 +16,7 @@ import sys
 
 import cupynumeric as np
 import pytest
+from legate_sparse.runtime import runtime
 from utils.banded_matrix import banded_matrix
 from utils.sample import simple_system_gen
 
@@ -47,9 +48,10 @@ def test_csr_spmv_unsupported_dtype(N, nnz_per_row, unsupported_dtype):
     A = banded_matrix(N, nnz_per_row).astype(unsupported_dtype)
     x = np.ndarray((N,))
 
-    expected_exp = NotImplementedError
-    with pytest.raises(expected_exp):
-        y = A.dot(x)  # noqa: F841
+    if runtime.num_gpus > 0:
+        expected_exp = NotImplementedError
+        with pytest.raises(expected_exp):
+            y = A.dot(x)  # noqa: F841
 
 
 if __name__ == "__main__":

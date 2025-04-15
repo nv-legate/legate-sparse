@@ -1,0 +1,17 @@
+gpu_enabled:
+  - true
+  - false
+
+upload_build:
+  - false
+
+python:
+  - 3.10
+  - 3.11
+  - 3.12
+
+numpy_version:
+  - ">=1.22,<2"
+
+cmake_version:
+  - ">=3.20.1,!=3.23.0"

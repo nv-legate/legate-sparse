@@ -197,28 +197,27 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
             p_sol, iters = linalg.cg(A, bflat, rtol=tol)
         total = timer.stop()
 
+        print(f"Mesh resolution                     : ({nx}, {ny})")
+        print(f"Dimension of A                      : {A.shape}")
+        print(f"Number of rows in A                 : {A.shape[0]}")
+
         if throughput:
-            print(
-                f"CG Mesh: {nx}x{ny}, A numrows: {A.shape[0]} , ms / iter:"
-                f" { total / max_iters }"  # noqa: E201, E202
-            )
+            print(f"Total elapsed time (ms)             : {total}")
+            print(f"Max number of iterations            : {max_iters}")
+            print(f"Time per (max-)iteration (ms)       : {total / max_iters}")
+
             sys.exit(0)
         else:
             norm_ini = np.linalg.norm(bflat)
             norm_res = np.linalg.norm(bflat - (A @ p_sol))
-            # Check convergence with relative tolerance
-            if norm_res <= norm_ini * tol:
-                print(
-                    f"CG converged after {iters} iterations, final residual relative norm:"
-                    f" {norm_res / norm_ini}"  # noqa: E201, E202
-                )
-            else:
-                print(
-                    f"CG didn't converge after {iters} iterations, final residual relative"
-                    f" norm: {norm_res / norm_ini}"
-                )
 
-            print(f"Total time: {total} ms")
+            # Check convergence with relative tolerance
+            convergence_status = True if norm_res <= norm_ini * tol else False
+            print(f"Did the solution converge           : {convergence_status}")
+            print(f"Final relative residual norm        : {norm_res / norm_ini}")
+            print(f"Number of iterations                : {iters}")
+            print(f"Total elapsed time (ms)             : {total}")
+            print(f"Time per iteration (ms)             : {total / iters}")
 
 
 if __name__ == "__main__":

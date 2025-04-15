@@ -22,22 +22,31 @@
 
 namespace sparse {
 
-struct ExpandPosToCoordinatesArgs {
-  const legate::PhysicalStore row_indices;
-  const legate::PhysicalStore pos;
+struct CSRIndexingCSRArgs {
+  const legate::PhysicalStore& A_vals;
+  const legate::PhysicalStore& A_pos;
+  const legate::PhysicalStore& A_crd;
+  const legate::PhysicalStore& key_pos;
+  const legate::PhysicalStore& key_crd;
+  const legate::PhysicalStore& value;
 };
 
-class ExpandPosToCoordinates : public SparseTask<ExpandPosToCoordinates> {
+class CSRIndexingCSR : public SparseTask<CSRIndexingCSR> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_EXPAND_POS_TO_COORDINATES};
+  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_INDEXING_CSR};
+
+  // TODO: The implementatio of the below three variants are
+  // identical and hence need to be templated (DRY)
 
  public:
-  static void cpu_variant(legate::TaskContext ctx);
+  static void cpu_variant(legate::TaskContext context);
+
 #ifdef LEGATE_USE_OPENMP
-  static void omp_variant(legate::TaskContext ctx);
+  static void omp_variant(legate::TaskContext context);
 #endif
+
 #ifdef LEGATE_USE_CUDA
-  static void gpu_variant(legate::TaskContext ctx);
+  static void gpu_variant(legate::TaskContext context);
 #endif
 };
 

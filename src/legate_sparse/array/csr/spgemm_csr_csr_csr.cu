@@ -19,6 +19,7 @@
 #include "legate_sparse/util/dispatch.h"
 #include "legate_sparse/util/legate_utils.h"
 #include "legate_sparse/util/thrust_allocator.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #include <thrust/scan.h>
 
@@ -45,7 +46,7 @@ int64_t local_offset_from_nnz(ncclComm_t comm, coord_t task_id, coord_t task_num
   ThrustAllocator alloc(Memory::GPU_FB_MEM);
   auto stream         = get_cached_stream();
   auto policy         = thrust::cuda::par(alloc).on(stream);
-  auto buf            = legate::create_buffer<int64_t, 1>(task_num, Memory::GPU_FB_MEM);
+  auto buf            = CREATE_BUFFER(int64_t, task_num, Memory::GPU_FB_MEM, "nnz_reduce_buf");
   auto nnz_reduce_buf = buf.ptr(0);
 
   // Pageable memory
@@ -121,8 +122,9 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
     }
 
     // Convert the pos arrays into local indptr arrays.
-    auto B_indptr = legate::create_buffer<int32_t, 1>(B_rows + 1, Memory::GPU_FB_MEM);
-    auto C_indptr = legate::create_buffer<int32_t, 1>(C_rows + 1, Memory::GPU_FB_MEM);
+    auto B_indptr = CREATE_BUFFER(int32_t, B_rows + 1, Memory::GPU_FB_MEM, "B_indptr");
+    auto C_indptr = CREATE_BUFFER(int32_t, C_rows + 1, Memory::GPU_FB_MEM, "C_indptr");
+
     std::vector<int> tmem(1000, 0);
     {
       auto blocks = get_num_blocks_1d(B_rows);
@@ -136,12 +138,12 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
     }
 
     auto B_crd_int =
-      legate::create_buffer<int32_t, 1>(B_crd.domain().get_volume(), Memory::GPU_FB_MEM);
+      CREATE_BUFFER(int32_t, B_crd.domain().get_volume(), Memory::GPU_FB_MEM, "B_crd_int");
 
     // Importantly, don't use the volume for C, as the image optimization
     // is being applied. Compute an upper bound on the volume directly.
     auto C_nnz     = C_crd.domain().hi()[0] - C_crd.domain().lo()[0] + 1;
-    auto C_crd_int = legate::create_buffer<int32_t, 1>(C_nnz, Memory::GPU_FB_MEM);
+    auto C_crd_int = CREATE_BUFFER(int32_t, C_nnz, Memory::GPU_FB_MEM, "C_crd_int");
     {
       auto dom    = B_crd.domain();
       auto elems  = dom.get_volume();
@@ -235,7 +237,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                                    nullptr));
       void* buffer1 = nullptr;
       if (bufferSize1 > 0) {
-        auto buf = legate::create_buffer<char, 1>(bufferSize1, Memory::GPU_FB_MEM);
+        auto buf = CREATE_BUFFER(char, bufferSize1, Memory::GPU_FB_MEM, "buffer1");
         buffer1  = buf.ptr(0);
       }
       CHECK_CUSPARSE(cusparseSpGEMM_workEstimation(handle,
@@ -266,7 +268,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                             nullptr));
       void* buffer2 = nullptr;
       if (bufferSize2 > 0) {
-        auto buf = legate::create_buffer<char, 1>(bufferSize2, Memory::GPU_FB_MEM);
+        auto buf = CREATE_BUFFER(char, bufferSize2, Memory::GPU_FB_MEM, "buffer2");
         buffer2  = buf.ptr(0);
       }
       CHECK_CUSPARSE(cusparseSpGEMM_compute(handle,
@@ -285,17 +287,21 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
       // Allocate buffers for the 32-bit version of the A matrix.
       int64_t A_rows, A_cols, A_nnz;
       CHECK_CUSPARSE(cusparseSpMatGetSize(cusparse_A, &A_rows, &A_cols, &A_nnz));
-      auto A_indptr = legate::create_buffer<int32_t, 1>(A_rows + 1, Memory::GPU_FB_MEM);
+      auto A_indptr = CREATE_BUFFER(int32_t, A_rows + 1, Memory::GPU_FB_MEM, "A_indptr");
       // Handle the creation of the A_crd buffer depending on whether the result
       // type is the type of data we are supposed to create.
       legate::Buffer<int32_t, 1> A_crd_int;
       if constexpr (INDEX_CODE == Type::Code::INT32) {
         A_crd_int = A_crd.create_output_buffer<INDEX_TY, 1>(A_nnz, true /* return_buffer */);
+        LOG_BUFFER(INDEX_TY, A_nnz, "A matrix coordinates (create_output_buffer)");
       } else {
         A_crd_int = legate::Buffer<int32_t, 1>(
           create_1d_extents(0, A_nnz - 1), Memory::GPU_FB_MEM, NULL, BUFFER_DEFAULT_ALIGNMENT);
+        LOG_BUFFER(int32_t, A_nnz, "A matrix coordinates (create_output_buffer)");
       }
       auto A_vals_acc = A_vals.create_output_buffer<VAL_TY, 1>(A_nnz, true /* return_buffer */);
+      LOG_BUFFER(VAL_TY, A_nnz, "A matrix values (create_output_buffer)");
+
       CHECK_CUSPARSE(
         cusparseCsrSetPointers(cusparse_A, A_indptr.ptr(0), A_crd_int.ptr(0), A_vals_acc.ptr(0)));
       CHECK_CUSPARSE(cusparseSpGEMM_copy(handle,
@@ -314,6 +320,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
       if constexpr (INDEX_CODE != Type::Code::INT32) {
         auto blocks = get_num_blocks_1d(A_nnz);
         auto buf    = A_crd.create_output_buffer<INDEX_TY, 1>(A_nnz, true /* return_buffer */);
+        LOG_BUFFER(INDEX_TY, A_nnz, "A matrix coordinates casting (output buffer)");
         cast<INDEX_TY, int32_t>
           <<<blocks, THREADS_PER_BLOCK, 0, stream>>>(A_nnz, buf.ptr(0), A_crd_int.ptr(0));
       }
@@ -356,7 +363,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                                    nullptr));
       void* buffer1 = nullptr;
       if (bufferSize1 > 0) {
-        auto buf = legate::create_buffer<char, 1>(bufferSize1, Memory::GPU_FB_MEM);
+        auto buf = CREATE_BUFFER(char, bufferSize1, Memory::GPU_FB_MEM, "buffer1");
         buffer1  = buf.ptr(0);
       }
       CHECK_CUSPARSE(cusparseSpGEMM_workEstimation(handle,
@@ -390,7 +397,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                                    nullptr));
       void* buffer3 = nullptr;
       if (bufferSize3 > 0) {
-        auto buf = legate::create_buffer<char, 1>(bufferSize3, Memory::GPU_FB_MEM);
+        auto buf = CREATE_BUFFER(char, bufferSize3, Memory::GPU_FB_MEM, "buffer3");
         buffer3  = buf.ptr(0);
       }
 
@@ -412,7 +419,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
 
       void* buffer2 = nullptr;
       if (bufferSize2 > 0) {
-        auto buf = legate::create_buffer<char, 1>(bufferSize2, Memory::GPU_FB_MEM);
+        auto buf = CREATE_BUFFER(char, bufferSize2, Memory::GPU_FB_MEM, "buffer2");
         buffer2  = buf.ptr(0);
       }
 
@@ -431,17 +438,21 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                             buffer2));
       // Allocate buffers for the 32-bit version of the A matrix.
       CHECK_CUSPARSE(cusparseSpMatGetSize(cusparse_A, &A_rows, &A_cols, &A_nnz));
-      auto A_indptr = legate::create_buffer<int32_t, 1>(A_rows + 1, Memory::GPU_FB_MEM);
+      auto A_indptr = CREATE_BUFFER(int32_t, A_rows + 1, Memory::GPU_FB_MEM, "A_indptr");
       // Handle the creation of the A_crd buffer depending on whether the result
       // type is the type of data we are supposed to create.
       legate::Buffer<int32_t, 1> A_crd_int;
       if constexpr (INDEX_CODE == Type::Code::INT32) {
         A_crd_int = A_crd.create_output_buffer<INDEX_TY, 1>(A_nnz, true /* return_buffer */);
+        LOG_BUFFER(INDEX_TY, A_nnz, "A matrix coordinates (create_output_buffer)");
       } else {
         A_crd_int = legate::Buffer<int32_t, 1>(
           create_1d_extents(0, A_nnz - 1), Memory::GPU_FB_MEM, NULL, BUFFER_DEFAULT_ALIGNMENT);
+        LOG_BUFFER(int32_t, A_nnz, "A matrix coordinates (create_output_buffer)");
       }
       auto A_vals_acc = A_vals.create_output_buffer<VAL_TY, 1>(A_nnz, true /* return_buffer */);
+      LOG_BUFFER(VAL_TY, A_nnz, "A matrix values (create_output_buffer)");
+
       CHECK_CUSPARSE(
         cusparseCsrSetPointers(cusparse_A, A_indptr.ptr(0), A_crd_int.ptr(0), A_vals_acc.ptr(0)));
       CHECK_CUSPARSE(cusparseSpGEMM_copy(handle,
@@ -478,6 +489,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
       if constexpr (INDEX_CODE != Type::Code::INT32) {
         auto blocks = get_num_blocks_1d(A_nnz);
         auto buf    = A_crd.create_output_buffer<INDEX_TY, 1>(A_nnz, true /* return_buffer */);
+        LOG_BUFFER(INDEX_TY, A_nnz, "A matrix coordinates casting (output buffer)");
         cast<INDEX_TY, int32_t>
           <<<blocks, THREADS_PER_BLOCK, 0, stream>>>(A_nnz, buf.ptr(0), A_crd_int.ptr(0));
       }
@@ -510,12 +522,12 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                 context.scalars()[1].value<uint64_t>(),
                                 context.scalars()[2].value<uint64_t>(),
                                 context.communicators()};
-  index_type_value_type_dispatch(args.A_crd.code(),
-                                 args.A_vals.code(),
-                                 SpGEMMCSRxCSRxCSRGPUImpl{},
-                                 args,
-                                 context.get_task_index()[0],
-                                 context.get_launch_domain().hi()[0]);
+  index_type_floating_point_value_type_dispatch(args.A_crd.code(),
+                                                args.A_vals.code(),
+                                                SpGEMMCSRxCSRxCSRGPUImpl{},
+                                                args,
+                                                context.get_task_index()[0],
+                                                context.get_launch_domain().hi()[0]);
 }
 
 }  // namespace sparse

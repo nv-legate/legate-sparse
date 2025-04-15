@@ -402,19 +402,13 @@ def execute(N, data, smoother, gridop, levels, maxiter, tol, verbose, warmup, ti
     norm_res = np.linalg.norm(b - (A @ x))
 
     # Check convergence with relative tolerance
-    if norm_res <= norm_ini * tol:
-        print(
-            f"Converged in {iters} iterations, final residual relative norm:"
-            f" {norm_res/norm_ini}"  # noqa: E226
-        )
-    else:
-        print(
-            f"Failed to converge in {iters} iterations, final residual relative norm:"
-            f" {norm_res/norm_ini}"  # noqa: E226
-        )
-
-    print(f"Solve Time: {total} ms")
-    print(f"Iteration time: {total / iters} ms")
+    convergence_status = True if norm_res <= norm_ini * tol else False
+    print(f"Dimension of A                      : {A.shape}")
+    print(f"Did the solution converge           : {convergence_status}")
+    print(f"Final relative residual norm        : {norm_res / norm_ini}")
+    print(f"Number of iterations                : {iters}")
+    print(f"Total elapsed time (ms)             : {total}")
+    print(f"Time per iteration (ms)             : {total / iters}")
 
 
 if __name__ == "__main__":

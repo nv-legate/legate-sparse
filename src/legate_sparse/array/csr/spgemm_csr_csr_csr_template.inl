@@ -114,8 +114,7 @@ static void spgemm_csr_csr_csr_template(TaskContext context)
     inputs[4],
     inputs[5],
   };
-
-  index_type_value_type_dispatch(
+  index_type_floating_point_value_type_dispatch(
     args.A_crd.code(), args.A_vals.code(), SpGEMMCSRxCSRxCSRImpl<KIND>{}, args);
 }
 

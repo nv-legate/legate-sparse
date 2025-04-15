@@ -152,6 +152,7 @@ def install_legate_sparse(
     thrust_dir,
     unknown,
     verbose,
+    enable_buffer_logging,
 ):
     if len(networks) > 1:
         print(
@@ -312,6 +313,7 @@ def install_legate_sparse(
 -DLegion_USE_LLVM={("ON" if llvm else "OFF")}
 -DLegion_NETWORKS={";".join(networks)}
 -DLegion_USE_HDF5={("ON" if hdf else "OFF")}
+-DENABLE_BUFFER_LOGGING={("ON" if enable_buffer_logging else "OFF")}
 """.splitlines()
 
     if cuda_dir:
@@ -581,6 +583,14 @@ def driver():
         required=False,
         default=False,
         help="Enable verbose build output.",
+    )
+    parser.add_argument(
+        "--enable-buffer-logging",
+        dest="enable_buffer_logging",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable logging deferred buffer allocations.",
     )
     args, unknown = parser.parse_known_args()
 

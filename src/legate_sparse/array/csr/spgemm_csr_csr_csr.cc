@@ -17,6 +17,7 @@
 #include "legate_sparse/array/csr/spgemm_csr_csr_csr.h"
 #include "legate_sparse/array/csr/spgemm_csr_csr_csr_template.inl"
 #include "legate_sparse/util/thrust_allocator.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #include <thrust/extrema.h>
 
@@ -49,8 +50,8 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
 
     // Next, initialize the deferred buffers ourselves, instead of using
     // Realm fills (which tend to be slower).
-    auto index_list_buf  = legate::create_buffer<INDEX_TY, 1>(A2_dim, Memory::SYSTEM_MEM);
-    auto already_set_buf = legate::create_buffer<bool, 1>(A2_dim, Memory::SYSTEM_MEM);
+    auto index_list_buf  = CREATE_BUFFER(INDEX_TY, A2_dim, Memory::SYSTEM_MEM, "index_list_buf");
+    auto already_set_buf = CREATE_BUFFER(bool, A2_dim, Memory::SYSTEM_MEM, "already_set_buf");
     for (INDEX_TY i = 0; i < A2_dim; i++) {
       index_list_buf[i]  = 0;
       already_set_buf[i] = false;
@@ -121,9 +122,9 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
 
     // Next, initialize the deferred buffers ourselves, instead of using
     // Realm fills (which tend to be slower).
-    auto index_list_buf  = legate::create_buffer<INDEX_TY, 1>(A2_dim, Memory::SYSTEM_MEM);
-    auto already_set_buf = legate::create_buffer<bool, 1>(A2_dim, Memory::SYSTEM_MEM);
-    auto workspace_buf   = legate::create_buffer<VAL_TY, 1>(A2_dim, Memory::SYSTEM_MEM);
+    auto index_list_buf  = CREATE_BUFFER(INDEX_TY, A2_dim, Memory::SYSTEM_MEM, "index_list_buf");
+    auto already_set_buf = CREATE_BUFFER(bool, A2_dim, Memory::SYSTEM_MEM, "already_set_buf");
+    auto workspace_buf   = CREATE_BUFFER(VAL_TY, A2_dim, Memory::SYSTEM_MEM, "workspace_buf");
     for (INDEX_TY i = 0; i < A2_dim; i++) {
       index_list_buf[i]  = 0;
       already_set_buf[i] = false;

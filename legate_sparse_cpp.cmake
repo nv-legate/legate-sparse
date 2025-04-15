@@ -19,6 +19,7 @@
 
 option(BUILD_SHARED_LIBS "Build legate sparse shared libraries" ON)
 option(legate_sparse_EXCLUDE_LEGATE_FROM_ALL "Exclude legate targets from Legate Sparse's 'all' target" OFF)
+option(ENABLE_BUFFER_LOGGING "Enable logging of deferred buffers and allocators" OFF)
 
 ##############################################################################
 # - Project definition -------------------------------------------------------
@@ -123,8 +124,6 @@ set_cpu_arch_flags(legate_sparse_CXX_OPTIONS)
 
 
 list(APPEND legate_sparse_SOURCES
-  src/legate_sparse/projections.cc
-
   src/legate_sparse/mapper/mapper.cc
 
   src/legate_sparse/array/conv/dense_to_csr.cc
@@ -134,6 +133,7 @@ list(APPEND legate_sparse_SOURCES
   src/legate_sparse/array/csr/get_diagonal.cc
   src/legate_sparse/array/csr/spmv.cc
   src/legate_sparse/array/csr/spgemm_csr_csr_csr.cc
+  src/legate_sparse/array/csr/indexing.cc
   
   src/legate_sparse/array/util/unzip_rect.cc
   src/legate_sparse/array/util/zip_to_rect.cc
@@ -153,6 +153,7 @@ if(Legion_USE_OpenMP)
     src/legate_sparse/array/csr/get_diagonal_omp.cc
     src/legate_sparse/array/csr/spmv_omp.cc
     src/legate_sparse/array/csr/spgemm_csr_csr_csr_omp.cc
+    src/legate_sparse/array/csr/indexing_omp.cc
 
     src/legate_sparse/array/util/unzip_rect_omp.cc
     src/legate_sparse/array/util/zip_to_rect_omp.cc
@@ -172,6 +173,7 @@ if(Legion_USE_CUDA)
     src/legate_sparse/array/csr/get_diagonal.cu
     src/legate_sparse/array/csr/spmv.cu
     src/legate_sparse/array/csr/spgemm_csr_csr_csr.cu
+    src/legate_sparse/array/csr/indexing.cu
 
     src/legate_sparse/array/util/unzip_rect.cu
     src/legate_sparse/array/util/zip_to_rect.cu
@@ -217,6 +219,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(platform_rpath_origin "@loader_path")
 endif ()
+
+if(ENABLE_BUFFER_LOGGING)
+  add_compile_definitions(ENABLE_BUFFER_LOGGING=1)
+else()
+  add_compile_definitions(ENABLE_BUFFER_LOGGING=0)
+endif()
 
 set_target_properties(legate_sparse
            PROPERTIES BUILD_RPATH                         "${platform_rpath_origin}"
@@ -296,7 +304,7 @@ install(
   FILES src/legate_sparse/sparse_c.h
         #TODO: ?
         #${CMAKE_CURRENT_BINARY_DIR}/include/cupynumeric/version_config.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legate_sprase)
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legate_sparse)
 
 
 ##############################################################################

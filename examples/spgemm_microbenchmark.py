@@ -73,10 +73,14 @@ def run_spgemm(N, nnz_per_row, fname1, fname2, iters, stable, timer):
 
     Cnnz = spgemm_dispatch(A, B).nnz
 
-    print(
-        f"SPGEMM {A.shape}x{B.shape} , nnz ({A.nnz})x({B.nnz})->({Cnnz}) : ms /"
-        f" iteration: {total / iters}"
-    )
+    print(f"Dimension of A                         : {A.shape}")
+    print(f"Dimension of B                         : {B.shape}")
+    print(f"NNZ of A                               : {A.nnz}")
+    print(f"NNZ of B                               : {B.nnz}")
+    print(f"NNZ of C                               : {Cnnz}")
+    print(f"Number of iterations                   : {iters}")
+    print(f"Total time (ms)                        : {total}")
+    print(f"Time per iteration (ms)                : {total / iters}")
 
 
 if __name__ == "__main__":

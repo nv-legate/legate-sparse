@@ -15,6 +15,7 @@
  */
 
 #include "legate_sparse/io/mtx_to_coo.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #include <fstream>
 
@@ -106,9 +107,12 @@ using val_ty   = double;
     bufSize *= 2;
   }
 
-  auto row_acc  = rows.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
-  auto col_acc  = cols.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  auto row_acc = rows.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  LOG_BUFFER(coord_ty, bufSize, "IO: rows");
+  auto col_acc = cols.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  LOG_BUFFER(coord_ty, bufSize, "IO: cols");
   auto vals_acc = vals.data().create_output_buffer<val_ty, 1>(bufSize, true /* return_data */);
+  LOG_BUFFER(val_ty, bufSize, "IO: vals");
 
   size_t idx = 0;
   while (std::getline(file, line)) {

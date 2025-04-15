@@ -20,6 +20,8 @@
 
 namespace sparse {
 
+using namespace legate;
+
 // All of our indices are 0 based.
 const cusparseIndexBase_t index_base = CUSPARSE_INDEX_BASE_ZERO;
 
@@ -29,7 +31,7 @@ constexpr std::size_t BUFFER_DEFAULT_ALIGNMENT = 16;
 // convertGlobalPosToLocalIndPtr converts the global pos array used for
 // CSR and CSC matrices into a locally indexed indptr array.
 template <typename T>
-__global__ void convertGlobalPosToLocalIndPtr(size_t rows, const Legion::Rect<1>* pos, T* indptr)
+__global__ void convertGlobalPosToLocalIndPtr(size_t rows, const Rect<1>* pos, T* indptr)
 {
   const auto idx = global_tid_1d();
   if (idx >= rows) {
@@ -48,7 +50,7 @@ __global__ void convertGlobalPosToLocalIndPtr(size_t rows, const Legion::Rect<1>
 // save number of nonzeros per row in the partition based on crd image
 template <typename TS, typename TD>
 __global__ void convertImagePosToLocalIndPtr(
-  size_t image_crds, const TS* crds, const Legion::Rect<1>* pos, TS low_offset, TD* indptr)
+  size_t image_crds, const TS* crds, const Rect<1>* pos, TS low_offset, TD* indptr)
 {
   const auto idx = global_tid_1d();
   if (idx >= image_crds) {
@@ -139,9 +141,9 @@ cusparseSpMatDescr_t makeCuSparseCSR(const legate::PhysicalStore& pos,
   auto pos_domain = pos.domain();
   auto crd_domain = crd.domain();
 
-  auto pos_acc = pos.read_accessor<Legion::Rect<1>, 1>();
+  auto pos_acc = pos.read_accessor<Rect<1>, 1>();
   size_t rows  = pos_domain.get_volume();
-  auto indptr  = legate::create_buffer<INDEX_TY, 1>(rows + 1, Legion::Memory::GPU_FB_MEM);
+  auto indptr  = legate::create_buffer<INDEX_TY, 1>(rows + 1, legate::Memory::GPU_FB_MEM);
   auto blocks  = get_num_blocks_1d(rows);
   convertGlobalPosToLocalIndPtr<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
     rows, pos_acc.ptr(pos_domain.lo()), indptr.ptr(0));
@@ -175,9 +177,9 @@ cusparseSpMatDescr_t makeCuSparseCSC(const legate::PhysicalStore& pos,
   auto pos_domain = pos.domain();
   auto crd_domain = crd.domain();
 
-  auto pos_acc = pos.read_accessor<Legion::Rect<1>, 1>();
+  auto pos_acc = pos.read_accessor<Rect<1>, 1>();
   size_t cols  = pos_domain.get_volume();
-  auto indptr  = legate::create_buffer<int64_t, 1>(cols + 1, Legion::Memory::GPU_FB_MEM);
+  auto indptr  = legate::create_buffer<int64_t, 1>(cols + 1, legate::Memory::GPU_FB_MEM);
   auto blocks  = get_num_blocks_1d(cols);
   convertGlobalPosToLocalIndPtr<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
     cols, pos_acc.ptr(pos_domain.lo()), indptr.ptr(0));
@@ -279,7 +281,7 @@ __global__ void localIndptrToNnz(size_t rows, uint64_t* out, T* in)
 // localIndptrToPos is a utility kernel to cast an indptr array
 // into a legate.sparse pos array.
 template <typename T>
-__global__ void localIndptrToPos(size_t rows, Legion::Rect<1>* out, T* in, int64_t offset)
+__global__ void localIndptrToPos(size_t rows, Rect<1>* out, T* in, int64_t offset)
 {
   const auto idx = global_tid_1d();
   if (idx >= rows) {

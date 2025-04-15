@@ -17,19 +17,29 @@
 #include "legate_sparse/array/conv/pos_to_coordinates.h"
 #include "legate_sparse/array/conv/pos_to_coordinates_template.inl"
 
-#include "legate_sparse/util/thrust_allocator.h"
-
 namespace sparse {
 
 using namespace legate;
 
+template <Type::Code INDEX_CODE>
+struct ExpandPosToCoordinatesImplBody<VariantKind::CPU, INDEX_CODE> {
+  using INDEX_TY = type_of<INDEX_CODE>;
+
+  void operator()(const AccessorRO<Rect<1>, 1>& pos,
+                  const AccessorWO<INDEX_TY, 1>& row_indices,
+                  const Rect<1>& rect)
+  {
+    for (size_t row = rect.lo[0]; row < rect.hi[0] + 1; row++) {
+      for (size_t j_pos = pos[row].lo; j_pos < pos[row].hi + 1; j_pos++) {
+        row_indices[j_pos] = row;
+      }
+    }
+  }
+};
+
 /*static*/ void ExpandPosToCoordinates::cpu_variant(TaskContext context)
 {
-  Memory::Kind kind = find_memory_kind_for_executing_processor();
-  ThrustAllocator alloc(kind);
-  auto policy = thrust::host(alloc);
-
-  pos_to_coordinates_template(context, policy);
+  pos_to_coordinates_template<VariantKind::CPU>(context);
 }
 
 namespace  // unnamed

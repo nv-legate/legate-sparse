@@ -19,6 +19,7 @@
 #include "legate_sparse/util/cusparse_utils.h"
 #include "legate_sparse/util/legate_utils.h"
 #include "legate_sparse/util/dispatch.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #ifndef CUSPARSE_MISALIGNMENT_FIX_VERSION
 #define CUSPARSE_MISALIGNMENT_FIX_VERSION 12500
@@ -131,7 +132,7 @@ struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
     // Allocate a buffer if we need to.
     void* workspacePtr = nullptr;
     if (bufSize > 0) {
-      auto buf     = legate::create_buffer<char, 1>(bufSize, Memory::GPU_FB_MEM);
+      auto buf     = CREATE_BUFFER(char, bufSize, Memory::GPU_FB_MEM, "workspace_buf");
       workspacePtr = buf.ptr(0);
     }
 
@@ -165,7 +166,11 @@ struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
 
 /*static*/ void CSRSpMVRowSplit::gpu_variant(TaskContext context)
 {
-  csr_spmv_row_split_template<VariantKind::GPU>(context);
+  auto inputs = context.inputs();
+  CSRSpMVRowSplitArgs args{context.outputs()[0], inputs[0], inputs[1], inputs[2], inputs[3]};
+
+  index_type_floating_point_value_type_dispatch(
+    args.A_crd.code(), args.y.code(), CSRSpMVRowSplitImpl<VariantKind::GPU>{}, args);
 }
 
 }  // namespace sparse

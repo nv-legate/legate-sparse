@@ -49,7 +49,11 @@ def run_spmv(A, iters, repartition, timer):
         spmv_dispatch(A, x, y, i, repartition)
     total = timer.stop()
 
-    print(f"SPMV rows: {A.shape[0]}, nnz: {A.nnz} , ms / iter: {total / iters}")
+    print(f"Dimension of A                         : {A.shape}")
+    print(f"NNZ of A                               : {A.nnz}")
+    print(f"Number of iterations                   : {iters}")
+    print(f"Total elapsed time (ms)                : {total}")
+    print(f"Time per iteration (ms)                : {total / iters}")
 
 
 if __name__ == "__main__":
@@ -116,8 +120,8 @@ if __name__ == "__main__":
 
     init_procs, bench_procs = get_phase_procs(use_legate)
 
-    print(f"Processor kind for initialization: {init_procs}")
-    print(f"Processor kind for computation   : {bench_procs}")
+    print(f"Processor kind for initialization      : {init_procs}")
+    print(f"Processor kind for computation         : {bench_procs}")
 
     if args.fname != "":
         # Read file from matrix

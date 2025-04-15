@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cupynumeric
+import cupynumeric as np
 import numpy
 import scipy.sparse as scpy
 import scipy.stats as stats
@@ -46,9 +46,9 @@ def sample_dense_vector(N: int, density: float, seed: int):
 
 
 def simple_system_gen(N, M, cls, tol=0.5):
-    a_dense = cupynumeric.random.rand(N, M)
-    x = cupynumeric.random.rand(M)
-    a_dense = cupynumeric.where(a_dense < tol, a_dense, 0)
+    a_dense = np.random.rand(N, M)
+    x = np.random.rand(M)
+    a_dense = np.where(a_dense < tol, a_dense, 0)
 
     a_sparse = None if cls is None else cls(a_dense)
 

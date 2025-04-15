@@ -200,3 +200,58 @@ def is_dtype_supported(dtype: numpy.dtype) -> bool:
     """
 
     return dtype in SUPPORTED_DATATYPES
+
+
+def is_dense(x) -> bool:
+    """
+    Is this object a dense cupynumeric array
+    """
+    return isinstance(x, cupynumeric.ndarray)
+
+
+def is_scalar_like(x) -> bool:
+    """
+    Is this object a scalar like type
+    """
+    if isinstance(x, str):
+        return False
+    return cupynumeric.isscalar(x) or (is_dense(x) and x.ndim == 0)
+
+
+def is_sparse(x) -> bool:
+    """
+    Is this object a legate sparse matrix
+    """
+    return legate_sparse.is_sparse_matrix(x)
+
+
+def sort_by_rows_then_cols(rows: cupynumeric.ndarray, cols: cupynumeric.ndarray):
+    """
+    This function is a quick and dirty hack that does what np.lexsort does
+    using argsort, but only for two keys.
+    This is primarily used to to get the indices that we can use to sort data
+    first by rows and then by columns
+
+    Parameters
+    ----------
+
+    rows: cupynumeric.ndarray
+        Indices of rows
+
+    cols: cupynumeric.ndarray
+        Indices of cols
+
+    Returns
+    -------
+    sorted_indices:cupynumeric.ndarray
+        Indices sorted by rows and then by columns, as given by numpy's lexsort
+    """
+    assert rows.size == cols.size
+
+    # note that the lexsort reverses the order of key,
+    # so this would be equivalent to np.lexsort((cols, rows))
+
+    indices = cupynumeric.argsort(cols, kind="stable")
+    order = cupynumeric.argsort(rows[indices], kind="stable")
+
+    return indices[order]
