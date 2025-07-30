@@ -63,7 +63,107 @@ from .utils import (
 # Temporary implementation for matrix generation in examples
 @clone_scipy_arr_kind(scipy.sparse.dia_array)
 class dia_array(CompressedBase):
+    """Sparse matrix with DIAgonal storage.
+
+    This can be instantiated in several ways:
+        dia_array(D)
+            where D is a 2-D ndarray or cupynumeric.ndarray
+
+        dia_array((data, offsets), shape=(M, N))
+            where data is a 2-D array and offsets is a 1-D array of diagonal offsets
+
+        dia_array((data, offset), shape=(M, N))
+            where data is a 1-D array and offset is a single integer
+
+    Attributes
+    ----------
+    dtype : dtype
+        Data type of the array
+    shape : 2-tuple
+        Shape of the array
+    ndim : int
+        Number of dimensions (this is always 2)
+    nnz : int
+        Number of stored values, including explicit zeros
+    data : cupynumeric.ndarray
+        DIA format data array of the array
+    offsets : cupynumeric.ndarray
+        DIA format offset array of the array
+    T : dia_array
+        Transpose of the matrix
+
+    Notes
+    -----
+    The DIA (Diagonal) format stores a sparse matrix by diagonals.
+    The data array has shape (n_diagonals, max_diagonal_length) where
+    each row represents a diagonal. The offsets array contains the
+    diagonal offsets (k > 0 for upper diagonals, k < 0 for lower diagonals).
+
+    Advantages of the DIA format:
+        - efficient for matrices with few diagonals
+        - fast matrix-vector products
+        - simple structure
+
+    Disadvantages of the DIA format:
+        - inefficient for irregular sparsity patterns
+        - not suitable for general sparse matrices
+        - limited arithmetic operations
+
+    Differences from SciPy:
+        - Uses cupynumeric arrays instead of numpy arrays
+        - Limited functionality (mainly for matrix generation in examples)
+        - Some operations may not be fully optimized
+        - Primarily used as an intermediate format for conversion to CSR
+
+    Examples
+    --------
+    >>> import cupynumeric as np
+    >>> from legate_sparse import dia_array
+    >>> data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> offsets = np.array([-1, 0, 1])
+    >>> A = dia_array((data, offsets), shape=(3, 3))
+    >>> A.todense()
+    array([[5, 2, 0],
+           [4, 8, 3],
+           [0, 7, 9]])
+    """
+
     def __init__(self, arg, shape=None, dtype=None, copy=False):
+        """Initialize a DIA array.
+
+        Parameters
+        ----------
+        arg : tuple
+            The input data. Must be a tuple (data, offsets) where:
+            - data is a 2-D array containing the diagonal values
+            - offsets is a 1-D array or integer specifying diagonal offsets
+        shape : tuple, optional
+            Shape of the array (M, N). Required if not inferrable from input.
+        dtype : dtype, optional
+            Data type of the array. If None, inferred from input data.
+        copy : bool, optional
+            Whether to copy the input data. Default is False.
+
+        Raises
+        ------
+        NotImplementedError
+            If shape is not provided (shape is required for DIA arrays).
+        AssertionError
+            If arg is not a tuple or has invalid format.
+        ValueError
+            If input data is inconsistent or invalid.
+
+        Notes
+        -----
+        The DIA format is primarily used for matrix generation in examples
+        and as an intermediate format for conversion to CSR. The shape
+        parameter is required as it cannot be inferred from the diagonal data.
+
+        The offsets array specifies which diagonals are stored:
+        - k > 0: upper diagonal (kth diagonal above main diagonal)
+        - k = 0: main diagonal
+        - k < 0: lower diagonal (kth diagonal below main diagonal)
+        """
         if shape is None:
             raise NotImplementedError
         assert isinstance(arg, tuple)
@@ -89,6 +189,18 @@ class dia_array(CompressedBase):
 
     @property
     def nnz(self):
+        """Number of stored values, including explicit zeros.
+
+        Returns
+        -------
+        int
+            The number of non-zero elements in the matrix.
+
+        Notes
+        -----
+        This property computes the number of non-zeros by iterating through
+        each diagonal and counting the valid elements within the matrix bounds.
+        """
         M, N = self.shape
         nnz = 0
         for k in self.offsets:
@@ -100,18 +212,73 @@ class dia_array(CompressedBase):
 
     @property
     def data(self):
+        """Get the data array of the DIA matrix.
+
+        Returns
+        -------
+        cupynumeric.ndarray
+            The data array containing the diagonal values. Each row represents
+            a diagonal, with shape (n_diagonals, max_diagonal_length).
+        """
         return store_to_cupynumeric_array(self._data)
 
     @property
     def offsets(self):
+        """Get the offsets array of the DIA matrix.
+
+        Returns
+        -------
+        cupynumeric.ndarray
+            The offsets array specifying which diagonals are stored.
+            Positive values indicate upper diagonals, negative values
+            indicate lower diagonals, and zero indicates the main diagonal.
+        """
         return store_to_cupynumeric_array(self._offsets)
 
     def copy(self):
+        """Returns a copy of this matrix.
+
+        Returns
+        -------
+        dia_array
+            A copy of the matrix with the same data and structure.
+        """
         data = cupynumeric.array(self.data)
         offsets = cupynumeric.array(self.offsets)
         return dia_array((data, offsets), shape=self.shape, dtype=self.dtype)
 
     def transpose(self, axes=None, copy=False):
+        """Reverses the dimensions of the sparse matrix.
+
+        Parameters
+        ----------
+        axes : None, optional
+            This argument is not supported and must be None.
+        copy : bool, optional
+            Whether to create a copy. Not supported - must be False.
+
+        Returns
+        -------
+        dia_array
+            Transposed matrix with shape (N, M) where the original shape was (M, N).
+
+        Raises
+        ------
+        ValueError
+            If axes is not None.
+        AssertionError
+            If copy is True (not supported).
+
+        Notes
+        -----
+        The axes parameter is not supported and must be None.
+        The copy parameter is not supported and must be False.
+
+        Transposing a DIA matrix involves:
+        1. Flipping the diagonal offsets (negating them)
+        2. Re-aligning the data matrix to account for the new offsets
+        3. Adjusting the shape from (M, N) to (N, M)
+        """
         if axes is not None:
             raise ValueError(
                 "Sparse matrices do not support "
@@ -147,9 +314,27 @@ class dia_array(CompressedBase):
             dtype=self.dtype,
         )
 
-    T = property(transpose)
+    T = property(transpose, doc="Transpose of the matrix")
 
     def tocsr(self, copy=False):
+        """Convert this matrix to a CSR matrix.
+
+        Parameters
+        ----------
+        copy : bool, optional
+            Whether to create a copy. Default is False.
+
+        Returns
+        -------
+        csr_array
+            The converted CSR matrix.
+
+        Notes
+        -----
+        The conversion to CSR is done by first transposing the matrix
+        and then converting the transposed matrix to CSR format.
+        This approach is used to simplify the conversion process.
+        """
         if copy:
             return self.copy().tocsr(copy=False)
         # we don't need secondary copy
@@ -157,6 +342,33 @@ class dia_array(CompressedBase):
 
     # This routine is lifted from scipy.sparse's converter.
     def _tocsr_transposed(self, copy=False):
+        """Convert the transposed DIA matrix to CSR format.
+
+        This internal method converts a transposed DIA matrix to CSR format.
+        It is used by the tocsr method after transposing the original matrix.
+
+        Parameters
+        ----------
+        copy : bool, optional
+            Whether to create a copy. Default is False.
+
+        Returns
+        -------
+        csr_array
+            The CSR representation of the transposed matrix.
+
+        Notes
+        -----
+        This method is adapted from SciPy's DIA to CSR converter.
+        It handles the conversion by:
+        1. Creating masks for valid diagonal elements
+        2. Computing the indptr array using cumulative sums
+        3. Extracting indices and data for non-zero elements
+        4. Constructing the CSR matrix
+
+        The method ensures that only elements within the matrix bounds
+        and with non-zero values are included in the CSR representation.
+        """
         if self.nnz == 0:
             return csr_array(self.shape, self.dtype)
 
@@ -192,3 +404,4 @@ class dia_array(CompressedBase):
 
 # Declare an alias for this type.
 dia_matrix = dia_array
+"""Alias for dia_array for backward compatibility with SciPy naming conventions."""

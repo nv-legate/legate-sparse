@@ -38,7 +38,7 @@ os.environ["CMAKE_ARGS"] = " ".join(cmake_flags)
 
 setup(
     name="legate-sparse",
-    version="25.03.00",
+    version="25.07.00",
     description="An Aspiring Drop-In Replacement for SciPy Sparse module at Scale",
     author="NVIDIA Corporation",
     license="Apache 2.0",
@@ -48,8 +48,9 @@ setup(
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     packages=find_packages(
         where=".",

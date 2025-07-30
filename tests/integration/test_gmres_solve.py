@@ -21,6 +21,28 @@ from legate_sparse import csr_array
 
 
 def test_gmres_solve():
+    """Test GMRES solver with a positive definite matrix.
+
+    This test verifies that the GMRES solver correctly solves the linear
+    system Ax = b for a positive definite matrix A.
+
+    Notes
+    -----
+    The test creates a random sparse matrix A and ensures it is positive
+    definite by:
+    1. Making it symmetric: A = 0.5 * (A + A.T)
+    2. Adding a multiple of the identity: A = A + N * I
+
+    It then generates a random solution vector x and computes b = Ax.
+    The GMRES solver is used to solve Ax = b, and the result is verified
+    by checking that A * x_pred ≈ b.
+
+    The test uses:
+    - atol=1e-5: Absolute tolerance for convergence
+    - tol=1e-5: Relative tolerance (legacy parameter)
+    - maxiter=300: Maximum number of iterations
+    - atol=1e-8: Tolerance for final verification
+    """
     N, D = 1000, 1000
     seed = 471014
     A = sample_dense(N, D, 0.1, seed)

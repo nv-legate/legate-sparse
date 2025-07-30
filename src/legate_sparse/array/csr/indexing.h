@@ -33,7 +33,8 @@ struct CSRIndexingCSRArgs {
 
 class CSRIndexingCSR : public SparseTask<CSRIndexingCSR> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_INDEXING_CSR};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_CSR_INDEXING_CSR}};
 
   // TODO: The implementatio of the below three variants are
   // identical and hence need to be templated (DRY)

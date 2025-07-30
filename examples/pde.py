@@ -12,6 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Partial Differential Equation (PDE) Solver Microbenchmark.
+
+This script benchmarks the solution of 2D Poisson equations using sparse
+linear algebra operations. It implements a finite difference discretization
+with Dirichlet boundary conditions and solves the resulting linear system
+using conjugate gradient iteration. It supports:
+
+- 2D Poisson equation with analytical right-hand side
+- Configurable mesh resolution (nx, ny grid points)
+- Performance measurement of linear solver iterations
+- Throughput mode for measuring solve performance only
+- Convergence analysis with relative residual norms
+- Multiple backend support (Legate, CuPy, SciPy)
+
+Command line arguments:
+--nx: Number of grid points along X axis
+--ny: Number of grid points along Y axis
+--plot: Enable residual plotting
+--plot_filename: Filename for plot output
+--throughput: Measure only solve iterations (requires max_iters)
+--tol: Convergence tolerance for linear solver
+--max-iters: Maximum number of linear solver iterations
+--warmup-iters: Number of warmup iterations (for throughput mode)
+--package: Backend to use (legate, cupy, scipy)
+"""
+
 # This PDE solving application is derived from
 # https://aquaulb.github.io/book_solving_pde_mooc/solving_pde_mooc/notebooks/05_IterativeMethods/05_01_Iteration_and_2D.html.
 
@@ -184,7 +210,6 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         _ = A.dot(np.ones((A.shape[1],)))
 
         if throughput:
-            assert max_iters > warmup_iters
             p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=warmup_iters)
             max_iters = max_iters - warmup_iters
             print(f"max_iters has been updated to: {max_iters}")
@@ -192,7 +217,10 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         timer.start()
         # If we're testing throughput, run only the prescribed number of iterations.
         if throughput:
-            p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters)
+            if use_legate:
+                p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters, conv_test_iters=max_iters)
+            else:
+                p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters)
         else:
             p_sol, iters = linalg.cg(A, bflat, rtol=tol)
         total = timer.stop()
@@ -200,9 +228,10 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         print(f"Mesh resolution                     : ({nx}, {ny})")
         print(f"Dimension of A                      : {A.shape}")
         print(f"Number of rows in A                 : {A.shape[0]}")
+        print(f"Total elapsed time (ms)             : {total}")
 
         if throughput:
-            print(f"Total elapsed time (ms)             : {total}")
+            print(f"Number of warmup iterations         : {warmup_iters}")
             print(f"Max number of iterations            : {max_iters}")
             print(f"Time per (max-)iteration (ms)       : {total / max_iters}")
 
@@ -215,9 +244,9 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
             convergence_status = True if norm_res <= norm_ini * tol else False
             print(f"Did the solution converge           : {convergence_status}")
             print(f"Final relative residual norm        : {norm_res / norm_ini}")
-            print(f"Number of iterations                : {iters}")
-            print(f"Total elapsed time (ms)             : {total}")
-            print(f"Time per iteration (ms)             : {total / iters}")
+            if iters > 0:
+                print(f"Number of iterations                : {iters}")
+                print(f"Time per iteration (ms)             : {total / iters}")
 
 
 if __name__ == "__main__":
@@ -294,8 +323,8 @@ if __name__ == "__main__":
     args, _ = parser.parse_known_args()
     _, timer, np, sparse, linalg, use_legate = parse_common_args()
 
-    if args.throughput and args.max_iters is None:
-        print("Must provide --max-iters when using -throughput.")
+    if args.throughput and (args.max_iters is None or args.warmup_iters is None):
+        print("Must provide --max-iters and --warmup-iters when using --throughput.")
         sys.exit(1)
 
     execute(**vars(args), timer=timer)

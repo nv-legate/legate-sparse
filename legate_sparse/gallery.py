@@ -75,8 +75,8 @@ from .dia import dia_array
 
 
 def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
-    """
-    Construct a sparse matrix from diagonals.
+    """Construct a sparse matrix from diagonals.
+
     Parameters
     ----------
     diagonals : sequence of array_like
@@ -90,44 +90,69 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
     shape : tuple of int, optional
         Shape of the result. If omitted, a square matrix large enough
         to contain the diagonals is returned.
-    format : {"dia", "csr", "csc", "lil", ...}, optional
-        Matrix format of the result. By default (format=None) an
-        appropriate sparse matrix format is returned. This choice is
-        subject to change.
+    format : {"dia", "csr"}, optional
+        Matrix format of the result. By default (format=None) a DIA
+        matrix is returned. Currently only "dia" and "csr" are supported.
     dtype : dtype, optional
-        Data type of the matrix.
+        Data type of the matrix. Must be specified.
+
+    Returns
+    -------
+    sparse matrix
+        A sparse matrix in the specified format with the given diagonals.
+
+    Raises
+    ------
+    ValueError
+        If the number of diagonals and offsets don't match, or if
+        diagonal lengths don't agree with matrix size.
+    NotImplementedError
+        If dtype is not specified or format is not supported.
+
     See Also
     --------
     spdiags : construct matrix from diagonals
+
     Notes
     -----
     This function differs from `spdiags` in the way it handles
     off-diagonals.
+
     The result from `diags` is the sparse equivalent of::
         np.diag(diagonals[0], offsets[0])
         + ...
         + np.diag(diagonals[k], offsets[k])
+
     Repeated diagonal offsets are disallowed.
-    .. versionadded:: 0.11
+
+    Differences from SciPy:
+        - Uses cupynumeric arrays instead of numpy arrays
+        - dtype parameter is required (cannot be None)
+        - Limited format support (only "dia" and "csr")
+        - Primarily used for matrix generation in examples
+
     Examples
     --------
-    >>> from scipy.sparse import diags
+    >>> import cupynumeric as np
+    >>> from legate_sparse import diags
     >>> diagonals = [[1, 2, 3, 4], [1, 2, 3], [1, 2]]
-    >>> diags(diagonals, [0, -1, 2]).toarray()
+    >>> diags(diagonals, [0, -1, 2], dtype=np.float64).todense()
     array([[1, 0, 1, 0],
            [1, 2, 0, 2],
            [0, 2, 3, 0],
            [0, 0, 3, 4]])
+
     Broadcasting of scalars is supported (but shape needs to be
     specified):
-    >>> diags([1, -2, 1], [-1, 0, 1], shape=(4, 4)).toarray()
+    >>> diags([1, -2, 1], [-1, 0, 1], shape=(4, 4), dtype=np.float64).todense()
     array([[-2.,  1.,  0.,  0.],
            [ 1., -2.,  1.,  0.],
            [ 0.,  1., -2.,  1.],
            [ 0.,  0.,  1., -2.]])
+
     If only one diagonal is wanted (as in `numpy.diag`), the following
     works as well:
-    >>> diags([1, 2, 3], 1).toarray()
+    >>> diags([1, 2, 3], 1, dtype=np.float64).todense()
     array([[ 0.,  1.,  0.,  0.],
            [ 0.,  0.,  2.,  0.],
            [ 0.,  0.,  0.,  3.],

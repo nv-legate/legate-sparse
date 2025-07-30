@@ -31,7 +31,8 @@ struct FastImageRangeArgs {
 // only for CSR SpGEMM on GPU right now
 class FastImageRange : public SparseTask<FastImageRange> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_FAST_IMAGE_RANGE};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_FAST_IMAGE_RANGE}};
 
   static constexpr legate::VariantOptions GPU_VARIANT_OPTIONS =
     legate::VariantOptions{}.with_has_allocations(true);

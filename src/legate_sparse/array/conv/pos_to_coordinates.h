@@ -29,7 +29,8 @@ struct ExpandPosToCoordinatesArgs {
 
 class ExpandPosToCoordinates : public SparseTask<ExpandPosToCoordinates> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_EXPAND_POS_TO_COORDINATES};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_EXPAND_POS_TO_COORDINATES}};
 
  public:
   static void cpu_variant(legate::TaskContext ctx);

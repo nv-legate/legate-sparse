@@ -7,14 +7,6 @@
   {# We need to have a default value for the initial pass over the recipe #}
   {% set gpu_enabled_bool = false %}
 {% endif %}
-{% if upload_build == "true" %}
-  {% set upload_build_bool = true %}
-{% elif upload_build == "false" %}
-  {% set upload_build_bool = false %}
-{% else %}
-  {# We need to have a default value for the initial pass over the recipe #}
-  {% set upload_build_bool = false %}
-{% endif %}
 ## The placeholder version is strictly for making two-pass conda build process.
 ## It should not be used for any other purpose, and this is not a default version.
 {% set placeholder_version = '0.0.0.dev' %}
@@ -68,9 +60,9 @@ build:
 
 ## Create legate/cupynumeric version and build string
 {% set legate_version = os.environ.get("LEGATE_VERSION", "1.0.0") %}
-{% set legate_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, os.environ.get("LEGATE_BUILDSTR", ""), cpu_gpu_tag]) %}
+{% set legate_buildstr = "_".join(["py" ~ py_version, "*" ~ cpu_gpu_tag.strip('_'), os.environ.get("LEGATE_BUILDSTR", "") ]) %}
 {% set cupynumeric_version = os.environ.get("CUPYNUMERIC_VERSION", "1.0.0") %}
-{% set cupynumeric_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, os.environ.get("CUPYNUMERIC_BUILDSTR", ""), cpu_gpu_tag]) %}
+{% set cupynumeric_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, cpu_gpu_tag, os.environ.get("CUPYNUMERIC_BUILDSTR", "")]) %}
 
 {% if use_local_path is not defined %}
 # use git hash
@@ -126,7 +118,7 @@ requirements:
     #- libcurand-dev
     - openblas =* =*openmp*
     - llvm-openmp
-    - legate ={{ legate_version }}={{ legate_buildstr }}
+    - legate ={{ legate_version }}=*{{ legate_buildstr }}
     - cupynumeric ={{ cupynumeric_version }}={{ cupynumeric_buildstr }}
 {% if gpu_enabled_bool %}
     # cupynumeric could be only in the run section and we could have just legate
@@ -146,7 +138,6 @@ requirements:
     - numpy {{ numpy_version }}
     - scipy
     - openblas =* =*openmp*
-    - legate ={{ legate_version }}={{ legate_buildstr }}
     - cupynumeric ={{ cupynumeric_version }}={{ cupynumeric_buildstr }}
 {% if gpu_enabled_bool %}
     - libnvjitlink

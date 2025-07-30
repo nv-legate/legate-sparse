@@ -32,7 +32,8 @@ struct GetCSRDiagonalArgs {
 
 class GetCSRDiagonal : public SparseTask<GetCSRDiagonal> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_DIAGONAL};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_CSR_DIAGONAL}};
   // TODO (rohany): We could rewrite this having each implementation just make
   //  a call to thrust::transform, but the implementations are simple enough
   //  anyway.

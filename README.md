@@ -29,8 +29,7 @@ for [NumPy](https://numpy.org/doc/stable/reference/index.html#reference), to
 enable writing programs that operate on distributed dense and sparse arrays.
 Take a look at the `examples` directory for some applications that can 
 use Legate Sparse. We have implemented
-an explicit partial-differential equation (PDE) [solver](examples/pde.py) 
-and [Geometric multi-grid](examples/gmg.py) solver. 
+an explicit partial-differential equation (PDE) [solver](examples/pde.py).
 More complex and interesting applications are on the way -- stay tuned!
 
 Legate Sparse is currently in alpha and supports a subset of APIs 

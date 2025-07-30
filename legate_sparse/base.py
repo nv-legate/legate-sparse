@@ -62,8 +62,36 @@ from .utils import (
 # CompressedBase is a base class for several different kinds of sparse
 # matrices, such as CSR, CSC, COO and DIA.
 class CompressedBase:
+    """Base class for compressed sparse matrix formats.
+
+    This class provides common functionality for compressed sparse matrix
+    formats like CSR, CSC, COO, and DIA. It handles the conversion from
+    non-zero counts to position arrays and provides common operations.
+
+    Notes
+    -----
+    This is an internal base class and should not be instantiated directly.
+    Use specific format classes like csr_array instead.
+    """
+
     @classmethod
     def nnz_to_pos_cls(cls, q_nnz: LogicalStore):
+        """Convert non-zero counts to position arrays.
+
+        This class method converts an array of non-zero counts per row/column
+        into the position array used in compressed sparse formats.
+
+        Parameters
+        ----------
+        q_nnz : LogicalStore
+            Store containing the number of non-zeros per row/column.
+
+        Returns
+        -------
+        tuple
+            (pos, total_nnz) where pos is the position array and total_nnz
+            is the total number of non-zeros.
+        """
         q_nnz_arr = store_to_cupynumeric_array(q_nnz)
         cs = cupynumeric.cumsum(q_nnz_arr)
         cs_shifted = cs - q_nnz_arr
@@ -86,9 +114,43 @@ class CompressedBase:
         return pos, cs[-1]
 
     def nnz_to_pos(self, q_nnz: LogicalStore):
+        """Convert non-zero counts to position arrays for this instance.
+
+        Parameters
+        ----------
+        q_nnz : LogicalStore
+            Store containing the number of non-zeros per row/column.
+
+        Returns
+        -------
+        tuple
+            (pos, total_nnz) where pos is the position array and total_nnz
+            is the total number of non-zeros.
+        """
         return CompressedBase.nnz_to_pos_cls(q_nnz)
 
     def asformat(self, format, copy=False):
+        """Convert the matrix to a specified format.
+
+        Parameters
+        ----------
+        format : str
+            The desired format ('csr', 'csc', 'coo', etc.).
+        copy : bool, optional
+            Whether to create a copy. Default is False.
+
+        Returns
+        -------
+        sparse matrix
+            Matrix in the requested format.
+
+        Raises
+        ------
+        ValueError
+            If the format is unknown.
+        NotImplementedError
+            If conversion to the requested format is not implemented.
+        """
         if format is None or format == self.format:
             if copy:
                 raise NotImplementedError
@@ -108,35 +170,51 @@ class CompressedBase:
 
     # The implementation of sum is mostly lifted from scipy.sparse.
     def sum(self, axis=None, dtype=None, out=None):
-        """
-        Sum the matrix elements over a given axis.
+        """Sum the matrix elements over a given axis.
+
         Parameters
         ----------
-        axis : {-2, -1, 0, 1, None} optional
+        axis : {-2, -1, 0, 1, None}, optional
             Axis along which the sum is computed. The default is to
             compute the sum of all the matrix elements, returning a scalar
             (i.e., `axis` = `None`).
         dtype : dtype, optional
             The type of the returned matrix and of the accumulator in which
-            the elements are summed.  The dtype of `a` is used by default
+            the elements are summed. The dtype of `a` is used by default
             unless `a` has an integer dtype of less precision than the default
-            platform integer.  In that case, if `a` is signed then the platform
+            platform integer. In that case, if `a` is signed then the platform
             integer is used while if `a` is unsigned then an unsigned integer
             of the same precision as the platform integer is used.
-            .. versionadded:: 0.18.0
-        out : np.matrix, optional
-            Alternative output matrix in which to place the result. It must
+        out : cupynumeric.ndarray, optional
+            Alternative output array in which to place the result. It must
             have the same shape as the expected output, but the type of the
             output values will be cast if necessary.
-            .. versionadded:: 0.18.0
+
         Returns
         -------
-        sum_along_axis : np.matrix
+        sum_along_axis : cupynumeric.ndarray or scalar
             A matrix with the same shape as `self`, with the specified
-            axis removed.
+            axis removed, or a scalar if axis=None.
+
+        Raises
+        ------
+        NotImplementedError
+            If axis=0 (sum over columns) is requested.
+        ValueError
+            If out is provided but has incompatible shape.
+
+        Notes
+        -----
+        The implementation uses multiplication by a matrix of ones to achieve
+        the sum. For some sparse matrix formats more efficient methods are
+        possible and should override this function.
+
+        Currently, summing over columns (axis=0) is not implemented due to
+        the lack of right matrix multiplication support.
+
         See Also
         --------
-        numpy.matrix.sum : NumPy's implementation of 'sum' for matrices
+        cupynumeric.matrix.sum : NumPy's implementation of 'sum' for matrices
         """
 
         # We use multiplication by a matrix of ones to achieve this.
@@ -171,9 +249,27 @@ class CompressedBase:
 
     # needed by _data_matrix
     def _with_data(self, data, copy=True):
-        """Returns a _different_ matrix object with the same sparsity structure as self,
-        but with different data.  By default the structure arrays
-        (i.e. .indptr and .indices) are copied. 'data' parameter is never copied.
+        """Returns a matrix object with the same sparsity structure as self,
+        but with different data.
+
+        Parameters
+        ----------
+        data : array_like
+            The new data array. This parameter is never copied.
+        copy : bool, optional
+            Whether to copy the structure arrays (indptr and indices).
+            Default is True.
+
+        Returns
+        -------
+        sparse matrix
+            A new matrix with the same sparsity structure but different data.
+
+        Notes
+        -----
+        This method creates a new matrix object with the same sparsity pattern
+        but replaces the data array. The structure arrays (indptr and indices)
+        are copied by default to avoid modifying the original matrix.
         """
 
         # For CSR and CSC compressed base we can just reuse compressed stores,
@@ -253,12 +349,42 @@ for npfunc in _ufuncs_with_fixed_point_at_zero:
 # format of {Dense, Sparse}. For our purposes, that means CSC and CSR
 # matrices.
 class DenseSparseBase:
+    """Base class for sparse matrices with dense-sparse format.
+
+    This class provides functionality for sparse matrices that have a TACO
+    format of {Dense, Sparse}, which includes CSR and CSC matrices.
+
+    Notes
+    -----
+    This is an internal base class and should not be instantiated directly.
+    Use specific format classes like csr_array instead.
+    """
+
     def __init__(self):
+        """Initialize the DenseSparseBase class."""
         self._balanced_pos_partition = None
 
     # consider using _with_data() here
     @classmethod
     def make_with_same_nnz_structure(cls, mat, arg, shape=None, dtype=None):
+        """Create a new matrix with the same non-zero structure as mat.
+
+        Parameters
+        ----------
+        mat : sparse matrix
+            The reference matrix whose structure to copy.
+        arg : array_like
+            The data for the new matrix.
+        shape : tuple, optional
+            The shape of the new matrix. If None, uses mat.shape.
+        dtype : dtype, optional
+            The data type of the new matrix. If None, uses mat.dtype.
+
+        Returns
+        -------
+        sparse matrix
+            A new matrix with the same structure as mat but with data from arg.
+        """
         if shape is None:
             shape = mat.shape
         if dtype is None:
@@ -269,6 +395,21 @@ class DenseSparseBase:
 
 # unpack_rect1_store unpacks a rect1 store into two int64 stores.
 def unpack_rect1_store(pos):
+    """Unpack a rect1 store into two int64 stores.
+
+    This function unpacks the compressed position array used in CSR/CSC
+    formats into separate start and end position arrays.
+
+    Parameters
+    ----------
+    pos : LogicalStore
+        The rect1 store containing packed position information.
+
+    Returns
+    -------
+    tuple
+        (lo, hi) where lo contains start positions and hi contains end positions.
+    """
     out1 = runtime.create_store(int64, shape=pos.shape)
     out2 = runtime.create_store(int64, shape=pos.shape)
     task = runtime.create_auto_task(SparseOpCode.UNZIP_RECT1)
@@ -283,6 +424,25 @@ def unpack_rect1_store(pos):
 
 # pack_to_rect1_store packs two int64 stores into a rect1 store.
 def pack_to_rect1_store(lo, hi, output=None):
+    """Pack two int64 stores into a rect1 store.
+
+    This function packs separate start and end position arrays into the
+    compressed rect1 format used in CSR/CSC formats.
+
+    Parameters
+    ----------
+    lo : LogicalStore
+        Store containing start positions.
+    hi : LogicalStore
+        Store containing end positions.
+    output : LogicalStore, optional
+        Output store for the packed result. If None, creates a new store.
+
+    Returns
+    -------
+    LogicalStore
+        The packed rect1 store.
+    """
     if output is None:
         output = runtime.create_store(rect1, shape=(lo.shape[0],))
     task = runtime.create_auto_task(SparseOpCode.ZIP_TO_RECT1)

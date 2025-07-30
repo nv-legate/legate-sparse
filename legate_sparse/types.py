@@ -18,8 +18,19 @@ import numpy
 # progress in generalizing the compute kernels, we can
 # remove this code.
 coord_ty = numpy.dtype(numpy.int64)
+"""Data type for coordinate indices in sparse matrices (int64)."""
+
 nnz_ty = numpy.dtype(numpy.uint64)
+"""Data type for non-zero counts in sparse matrices (uint64)."""
+
 float64 = numpy.dtype(numpy.float64)
+"""64-bit floating point data type."""
+
 int32 = numpy.dtype(numpy.int32)
+"""32-bit integer data type."""
+
 int64 = numpy.dtype(numpy.int64)
+"""64-bit integer data type."""
+
 uint64 = numpy.dtype(numpy.uint64)
+"""64-bit unsigned integer data type."""

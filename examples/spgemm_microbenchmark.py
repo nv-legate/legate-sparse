@@ -12,17 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Sparse Matrix-Matrix Multiplication Microbenchmark.
+
+This script benchmarks sparse matrix-matrix multiplication performance
+with configurable matrix sizes and generation methods. It supports:
+
+- Banded matrix generation with specified non-zeros per row
+- Loading matrices from Matrix Market files
+- Stable mode for partition caching vs. fresh matrix creation
+- Multiple backend support (Legate, CuPy, SciPy)
+
+Command line arguments:
+--nrows: Matrix size (supports k, m, g suffixes)
+--nnz-per-row: Number of non-zeros per row for banded matrices
+--stable: Enable partition caching by reusing matrices
+--filename1: Load first matrix from Matrix Market file
+--filename2: Load second matrix from Matrix Market file
+--iters: Number of benchmark iterations
+--package: Backend to use (legate, cupy, scipy)
+"""
+
 import argparse
 
 from common import banded_matrix, get_arg_number, get_phase_procs, parse_common_args
 
 
 def spgemm_dispatch(A, B):
+    """Dispatch sparse matrix-matrix multiplication operation.
+
+    Parameters
+    ----------
+    A : sparse matrix
+        First sparse matrix operand.
+    B : sparse matrix
+        Second sparse matrix operand.
+
+    Returns
+    -------
+    sparse matrix
+        The result of A @ B.
+
+    Notes
+    -----
+    This function performs sparse matrix-matrix multiplication using
+    the @ operator, which is supported by all backends (Legate, CuPy, SciPy).
+    """
     C = A @ B
     return C
 
 
 def get_matrices(N, nnz_per_row, fname1, fname2):
+    """Get matrices for SpGEMM benchmark.
+
+    Parameters
+    ----------
+    N : int
+        Matrix size (N x N) for generated matrices.
+    nnz_per_row : int
+        Number of non-zeros per row for banded matrices.
+    fname1 : str
+        Filename for first matrix (empty string to generate).
+    fname2 : str
+        Filename for second matrix (empty string to use first matrix).
+
+    Returns
+    -------
+    tuple
+        (A, B) - two sparse matrices for multiplication.
+
+    Notes
+    -----
+    If fname1 is provided, loads matrices from Matrix Market files.
+    If fname2 is empty, uses the same matrix for both A and B.
+    Otherwise, generates banded matrices with specified parameters.
+    """
     if fname1 != "":
         # Read file from matrix
         A = sparse.mmread(fname1)
@@ -38,6 +101,37 @@ def get_matrices(N, nnz_per_row, fname1, fname2):
 
 
 def run_spgemm(N, nnz_per_row, fname1, fname2, iters, stable, timer):
+    """Run sparse matrix-matrix multiplication benchmark.
+
+    Parameters
+    ----------
+    N : int
+        Matrix size for generated matrices.
+    nnz_per_row : int
+        Number of non-zeros per row for banded matrices.
+    fname1 : str
+        Filename for first matrix.
+    fname2 : str
+        Filename for second matrix.
+    iters : int
+        Number of benchmark iterations.
+    stable : bool
+        Whether to reuse matrices (allows partition caching).
+    timer : Timer
+        Timer object for measuring performance.
+
+    Notes
+    -----
+    This function runs a benchmark of sparse matrix-matrix multiplication.
+    It supports two modes:
+    - stable=True: Reuses matrices, allowing partition caching
+    - stable=False: Creates fresh matrices each iteration
+
+    The function prints:
+    - Matrix dimensions and non-zero counts
+    - Number of iterations
+    - Total time and time per iteration
+    """
     warmup_iterations = 5
 
     if stable:

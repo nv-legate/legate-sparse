@@ -66,6 +66,32 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+"""
+Sparse linear algebra (:mod:`legate_sparse.linalg`)
+===================================================
+
+.. currentmodule:: legate_sparse.linalg
+
+Abstract linear operators
+-------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   LinearOperator -- abstract representation of a linear operator
+
+Solving linear problems
+-----------------------
+
+Iterative methods for linear equation systems:
+
+.. autosummary::
+   :toctree: generated/
+
+   cg -- Use Conjugate Gradient iteration to solve Ax = b
+   gmres -- Use Generalized Minimal RESidual iteration to solve Ax = b
+
+"""
 
 import inspect
 import warnings
@@ -414,6 +440,23 @@ class IdentityOperator(LinearOperator):
 
 
 def make_linear_operator(A):
+    """Convert a matrix to a LinearOperator.
+
+    Parameters
+    ----------
+    A : array_like, sparse matrix, or LinearOperator
+        The matrix to convert.
+
+    Returns
+    -------
+    LinearOperator
+        A LinearOperator representation of A.
+
+    Notes
+    -----
+    If A is already a LinearOperator, it is returned unchanged.
+    Otherwise, A is wrapped in a _SparseMatrixLinearOperator.
+    """
     if isinstance(A, LinearOperator):
         return A
     else:
@@ -431,6 +474,39 @@ def make_linear_operator(A):
 # allocating unnecessary futures.
 @track_provenance(nested=True)
 def cg_axpby(y, x, a, b, isalpha=True, negate=False):
+    """Perform fused vector operation for CG solvers.
+
+    This function performs the operation y = alpha * x + beta * y where
+    alpha and beta are computed as a/b within the task. This avoids
+    unnecessary future operations and memory allocations.
+
+    Parameters
+    ----------
+    y : cupynumeric.ndarray
+        Output vector that will be modified in-place.
+    x : cupynumeric.ndarray
+        Input vector for the operation.
+    a : cupynumeric.ndarray
+        Numerator for computing alpha or beta.
+    b : cupynumeric.ndarray
+        Denominator for computing alpha or beta.
+    isalpha : bool, optional
+        If True, a/b is interpreted as alpha. If False, as beta.
+        Default is True.
+    negate : bool, optional
+        If True, negate the computed coefficient. Default is False.
+
+    Returns
+    -------
+    cupynumeric.ndarray
+        The modified y vector (same as input y).
+
+    Notes
+    -----
+    This is a specialized implementation for CG solvers that fuses
+    coefficient computation with vector operations to avoid unnecessary
+    memory allocations and future operations in the Legion runtime.
+    """
     y_store = get_store_from_cupynumeric_array(y)
     x_store = get_store_from_cupynumeric_array(x)
     task = runtime.create_auto_task(SparseOpCode.AXPBY)
@@ -451,6 +527,29 @@ def cg_axpby(y, x, a, b, isalpha=True, negate=False):
 
 
 def _get_atol_rtol(b_norm, tol=None, atol=0.0, rtol=1e-5):
+    """Compute absolute and relative tolerances for convergence.
+
+    Parameters
+    ----------
+    b_norm : float
+        Norm of the right-hand side vector.
+    tol : float, optional
+        Legacy tolerance parameter. If provided, overrides rtol.
+    atol : float, optional
+        Absolute tolerance. Default is 0.0.
+    rtol : float, optional
+        Relative tolerance. Default is 1e-5.
+
+    Returns
+    -------
+    tuple
+        (atol, rtol) - computed absolute and relative tolerances.
+
+    Notes
+    -----
+    If atol is None, it is set to rtol. The final atol is the maximum
+    of the provided atol and rtol * b_norm.
+    """
     rtol = float(tol) if tol is not None else rtol
 
     if atol is None:
@@ -473,6 +572,60 @@ def cg(
     rtol=1e-5,
     conv_test_iters=25,
 ):
+    """Solve a linear system using the Conjugate Gradient method.
+
+    Parameters
+    ----------
+    A : sparse matrix or LinearOperator
+        The coefficient matrix of the linear system.
+    b : cupynumeric.ndarray
+        Right-hand side of the linear system.
+    x0 : cupynumeric.ndarray, optional
+        Initial guess for the solution. If None, uses zero vector.
+    tol : float, optional
+        Legacy tolerance parameter. If provided, overrides rtol.
+    maxiter : int, optional
+        Maximum number of iterations. If None, uses 10 * n.
+    M : sparse matrix or LinearOperator, optional
+        Preconditioner for A. If None, uses identity.
+    callback : callable, optional
+        User-specified function called after each iteration.
+    atol : float, optional
+        Absolute tolerance for convergence. Default is 0.0.
+    rtol : float, optional
+        Relative tolerance for convergence. Default is 1e-5.
+    conv_test_iters : int, optional
+        Number of iterations between convergence tests. Default is 25.
+
+    Returns
+    -------
+    tuple
+        (x, info) where x is the solution and info is zero if solution is
+        converged else number of iterations
+
+    Raises
+    ------
+    AssertionError
+        If b is not 1D or A is not square.
+
+    Notes
+    -----
+    This implementation follows SciPy's CG solver semantics closely.
+    The method uses fused vector operations to avoid unnecessary
+    memory allocations and improve performance.
+
+    Convergence is tested every conv_test_iters iterations to avoid
+    the overhead of computing the residual norm in every iteration.
+
+    Examples
+    --------
+    >>> import cupynumeric as np
+    >>> from legate_sparse import csr_array, linalg
+    >>> A = csr_array([[4, 1], [1, 3]])
+    >>> b = np.array([1, 2])
+    >>> x, iters = linalg.cg(A, b)
+    >>> print(f"Solution: {x}, Iterations: {iters}")
+    """
     # We keep semantics as close as possible to scipy.cg.
     # https://github.com/scipy/scipy/blob/v1.9.0/scipy/sparse/linalg/_isolve/iterative.py#L298-L385
     assert len(b.shape) == 1 or (len(b.shape) == 2 and b.shape[1] == 1)
@@ -503,6 +656,7 @@ def cg(
     z = None
     q = None
 
+    converged = False
     while iters < maxiter:
         z = M.matvec(r, out=z)
         rho1 = rho
@@ -528,10 +682,15 @@ def cg(
         if (iters % conv_test_iters == 0 or iters == (maxiter - 1)) and np.linalg.norm(
             r
         ) < atol:
+            converged = True
             # Test convergence every conv_test_iters iterations.
             break
 
-    return x, iters
+    info = 0
+    if iters == maxiter and not converged:
+        info = iters
+
+    return x, info
 
 
 # This implementation of GMRES is lifted from the cupy implementation:
@@ -550,43 +709,77 @@ def gmres(
     callback_type=None,
     rtol=1e-5,
 ):
-    """Uses Generalized Minimal RESidual iteration to solve ``Ax = b``.
-    Args:
-        A (ndarray, spmatrix or LinearOperator): The real or complex
-            matrix of the linear system with shape ``(n, n)``. ``A`` must be
-            :class:`cupy.ndarray`, :class:`cupyx.scipy.sparse.spmatrix` or
-            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
-        b (cupy.ndarray): Right hand side of the linear system with shape
-            ``(n,)`` or ``(n, 1)``.
-        x0 (cupy.ndarray): Starting guess for the solution.
-        tol (float): Tolerance for convergence. This argument is optional,
-            deprecated in favour of ``rtol``.
-        restart (int): Number of iterations between restarts. Larger values
-            increase iteration cost, but may be necessary for convergence.
-        maxiter (int): Maximum number of iterations.
-        M (ndarray, spmatrix or LinearOperator): Preconditioner for ``A``.
-            The preconditioner should approximate the inverse of ``A``.
-            ``M`` must be :class:`cupy.ndarray`,
-            :class:`cupyx.scipy.sparse.spmatrix` or
-            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
-        callback (function): User-specified function to call on every restart.
-            It is called as ``callback(arg)``, where ``arg`` is selected by
-            ``callback_type``.
-        callback_type (str): 'x' or 'pr_norm'. If 'x', the current solution
-            vector is used as an argument of callback function. if 'pr_norm',
-            relative (preconditioned) residual norm is used as an arugment.
-        atol, rtol (float): Tolerance for convergence. For convergence,
-            ``norm(b - A @ x) <= max(rtol*norm(b), atol)`` should be satisfied.
-            The default is ``atol=0.`` and ``rtol=1e-5``.
-    Returns:
-        tuple:
-            It returns ``x`` (cupy.ndarray) and ``info`` (int) where ``x`` is
-            the converged solution and ``info`` provides convergence
-            information.
-    Reference:
-        M. Wang, H. Klie, M. Parashar and H. Sudan, "Solving Sparse Linear
-        Systems on NVIDIA Tesla GPUs", ICCS 2009 (2009).
-    .. seealso:: :func:`scipy.sparse.linalg.gmres`
+    """Solve a linear system using the Generalized Minimal Residual method.
+
+    Parameters
+    ----------
+    A : sparse matrix or LinearOperator
+        The coefficient matrix of the linear system.
+    b : cupynumeric.ndarray
+        Right-hand side of the linear system with shape (n,) or (n, 1).
+    x0 : cupynumeric.ndarray, optional
+        Starting guess for the solution. If None, uses zero vector.
+    tol : float, optional
+        Legacy tolerance parameter. If provided, overrides rtol.
+    restart : int, optional
+        Number of iterations between restarts. Larger values increase
+        iteration cost but may be necessary for convergence. Default is 20.
+    maxiter : int, optional
+        Maximum number of iterations. If None, uses 10 * n.
+    M : sparse matrix or LinearOperator, optional
+        Preconditioner for A. The preconditioner should approximate
+        the inverse of A. If None, uses identity.
+    callback : callable, optional
+        User-specified function called on every restart.
+    restrt : int, optional
+        Deprecated alias for restart parameter.
+    atol : float, optional
+        Absolute tolerance for convergence. Default is 0.0.
+    callback_type : str, optional
+        Type of callback argument: 'x' for current solution vector,
+        'pr_norm' for relative preconditioned residual norm. Default is 'pr_norm'.
+    rtol : float, optional
+        Relative tolerance for convergence. Default is 1e-5.
+
+    Returns
+    -------
+    tuple
+        (x, info) where x is the converged solution and info provides
+        convergence information.
+
+    Raises
+    ------
+    AssertionError
+        If b is not 1D or A is not square.
+    ValueError
+        If callback_type is not 'x' or 'pr_norm'.
+
+    Notes
+    -----
+    This implementation is adapted from CuPy's GMRES solver.
+    The method uses Arnoldi iteration to build a Krylov subspace
+    and solves the least squares problem in that subspace.
+
+    For convergence, the residual must satisfy:
+    norm(b - A @ x) <= max(rtol * norm(b), atol)
+
+    The restart parameter controls the trade-off between memory usage
+    and convergence rate. Larger restart values may improve convergence
+    but require more memory.
+
+    References
+    ----------
+    M. Wang, H. Klie, M. Parashar and H. Sudan, "Solving Sparse Linear
+    Systems on NVIDIA Tesla GPUs", ICCS 2009 (2009).
+
+    Examples
+    --------
+    >>> import cupynumeric as np
+    >>> from legate_sparse import csr_array, linalg
+    >>> A = csr_array([[4, 1, 0], [1, 3, 1], [0, 1, 2]])
+    >>> b = np.array([1, 2, 3])
+    >>> x, info = linalg.gmres(A, b, restart=10)
+    >>> print(f"Solution: {x}, Info: {info}")
     """
     assert len(b.shape) == 1 or (len(b.shape) == 2 and b.shape[1] == 1)
     assert len(A.shape) == 2 and A.shape[0] == A.shape[1]
@@ -625,6 +818,27 @@ def gmres(
     e = np.zeros((restart + 1,), dtype=A.dtype)
 
     def compute_hu(u, j):
+        """Compute Householder transformation for Arnoldi iteration.
+
+        Parameters
+        ----------
+        u : cupynumeric.ndarray
+            Vector to be transformed.
+        j : int
+            Current iteration index.
+
+        Returns
+        -------
+        tuple
+            (h, u) where h contains the Householder coefficients and
+            u is the transformed vector.
+
+        Notes
+        -----
+        This function computes the Householder transformation that
+        orthogonalizes the current vector against the previous basis
+        vectors in the Arnoldi iteration.
+        """
         h = V[:, : j + 1].conj().T @ u
         u -= V[:, : j + 1] @ h
         return h, u

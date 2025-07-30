@@ -31,7 +31,8 @@ struct CSRToDenseArgs {
 
 class CSRToDense : public SparseTask<CSRToDense> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_TO_DENSE};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_CSR_TO_DENSE}};
 
  public:
   static void cpu_variant(legate::TaskContext ctx);

@@ -20,15 +20,39 @@ from legate_sparse import csr_matrix
 
 
 class TestIndexingSetItem:
+    """Test class for sparse matrix indexing and assignment operations.
+
+    This class contains tests for various indexing scenarios including
+    boolean masking, derived masks, and edge cases for sparse matrix
+    assignment operations.
+    """
+
     @pytest.mark.parametrize("N", [6, 9, 17])
     def test_incompatible_mask(self, N, create_matrix, create_mask):
-        """
+        """Test indexing with incompatible mask sparsity patterns.
+
         This test checks that the mask is applied correctly to the matrix when
-        the sparsity of mask is from that of the matrix.
+        the sparsity of mask is different from that of the matrix.
+
+        Parameters
+        ----------
+        N : int
+            Size of the square matrix.
+        create_matrix : fixture
+            Fixture to create test matrices.
+        create_mask : fixture
+            Fixture to create boolean masks.
+
+        Notes
+        -----
         While SciPy will apply the mask to all entries, Legate Sparse will only
         apply the mask to the non-zero entries of the matrix, so we can't compare
-        to SciPy results for all entries. Instead, we check that the number of
-        non-zero entries are updated correctly and the values are updated correctly.
+        to SciPy results for all entries. Instead, we check that:
+        1. The number of non-zero entries are updated correctly
+        2. The values are updated correctly for masked positions
+
+        This test verifies that the sparse implementation correctly handles
+        cases where the mask has a different sparsity pattern than the matrix.
         """
         _, A = create_matrix(N)
         _, mask = create_mask(N)
@@ -54,11 +78,25 @@ class TestIndexingSetItem:
 
     @pytest.mark.parametrize("N", [8, 13, 24])
     def test_mask_derived_from_self(self, N, create_matrix):
-        """
+        """Test indexing with mask derived from the matrix itself.
+
         This test checks that the mask is applied correctly to the matrix when
-        the sparsity of mask is derived from the matrix. Our behavior
-        matches that of SciPy, so we can compare against SciPy
-        results for all entries.
+        the sparsity of mask is derived from the matrix.
+
+        Parameters
+        ----------
+        N : int
+            Size of the square matrix.
+        create_matrix : fixture
+            Fixture to create test matrices.
+
+        Notes
+        -----
+        Our behavior matches that of SciPy when the mask is derived from
+        the matrix itself, so we can compare against SciPy results for all entries.
+
+        The test creates a mask based on a threshold comparison (A > threshold)
+        and verifies that both SciPy and Legate Sparse produce identical results.
         """
         A_scipy, A_sparse = create_matrix(N)
         threshold = 0.2
@@ -81,9 +119,23 @@ class TestIndexingSetItem:
 
     @pytest.mark.parametrize("N", [8, 13, 24])
     def test_mask_all_true(self, N, create_matrix):
-        """
+        """Test indexing behavior with a mask that is all True.
+
         This test checks indexing behavior when using a mask that is all True.
         Every non-zero element should be updated to the new value.
+
+        Parameters
+        ----------
+        N : int
+            Size of the square matrix.
+        create_matrix : fixture
+            Fixture to create test matrices.
+
+        Notes
+        -----
+        The test creates a mask with the same sparsity pattern as the matrix
+        but with all True values. This should result in all non-zero elements
+        being updated to the specified value.
         """
         _, A = create_matrix(N)
         value = 10.0
@@ -99,9 +151,24 @@ class TestIndexingSetItem:
 
     @pytest.mark.parametrize("N", [8, 13, 24])
     def test_mask_all_false(self, N, create_matrix, create_mask):
-        """
+        """Test indexing behavior with a mask that is all False.
+
         This test checks indexing behavior when using a mask that is all False.
         No elements should be modified.
+
+        Parameters
+        ----------
+        N : int
+            Size of the square matrix.
+        create_matrix : fixture
+            Fixture to create test matrices.
+        create_mask : fixture
+            Fixture to create boolean masks.
+
+        Notes
+        -----
+        The test creates a mask with density=0 (all False values) and verifies
+        that the matrix remains unchanged after the assignment operation.
         """
         _, A = create_matrix(N)
         _, mask_all_false = create_mask(N, density=0)
@@ -114,7 +181,25 @@ class TestIndexingSetItem:
         assert numpy.all(A_copy.get_data() == A.get_data())
 
     def test_random_column_order(self):
-        "The ordering of the matrix is random" ""
+        """Test indexing with randomly ordered column indices.
+
+        This test verifies that indexing works correctly even when the
+        column indices are not in sorted order within each row.
+
+        Notes
+        -----
+        The test creates a matrix with randomly ordered column indices
+        within rows. During instantiation, these indices get sorted to
+        ensure proper indexing behavior.
+
+        The test verifies that:
+        1. The matrix is created correctly despite random column ordering
+        2. Boolean indexing operations work correctly
+        3. The number of elements replaced matches the expected count
+
+        This is important because CSR format requires column indices to be
+        sorted within each row for efficient operations.
+        """
         row_indices = cupynumeric.array(
             [
                 2,

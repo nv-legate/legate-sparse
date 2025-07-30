@@ -21,6 +21,7 @@ import scipy.sparse as _sp  # type: ignore
 
 from .coverage import clone_module  # noqa: F401
 from .csr import csr_array, csr_matrix  # noqa: F401
+from .dia import dia_array, dia_matrix  # noqa: F401
 from .module import *  # noqa: F401
 
 clone_module(_sp, globals())

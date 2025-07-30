@@ -12,6 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Sparse Matrix-Vector Multiplication Microbenchmark.
+
+This script benchmarks sparse matrix-vector multiplication performance
+across different matrix sizes and configurations. It supports:
+
+- Matrix size sweeps with configurable min/max sizes
+- Banded matrix generation with specified non-zeros per row
+- Loading matrices from Matrix Market files
+- Optional repartitioning to simulate data updates
+- Multiple backend support (Legate, CuPy, SciPy)
+
+Command line arguments:
+--nmin: Minimum matrix size (supports k, m, g suffixes)
+--nmax: Maximum matrix size (supports k, m, g suffixes)
+--nnz-per-row: Number of non-zeros per row for banded matrices
+--repartition: Enable alternating x/y vectors
+--filename: Load matrix from Matrix Market file
+--iters: Number of benchmark iterations
+--from-diags: Use sparse.diags for matrix construction
+--package: Backend to use (legate, cupy, scipy)
+"""
+
 import argparse
 
 from common import banded_matrix, get_arg_number, get_phase_procs, parse_common_args
@@ -19,6 +41,30 @@ from common import banded_matrix, get_arg_number, get_phase_procs, parse_common_
 
 # Writing to pre-allocated array is preferred
 def spmv_dispatch(A, x, y, i, repartition):
+    """Dispatch sparse matrix-vector multiplication operation.
+
+    Parameters
+    ----------
+    A : sparse matrix
+        The sparse matrix to multiply with.
+    x : array_like
+        Input vector.
+    y : array_like
+        Output vector (pre-allocated).
+    i : int
+        Iteration index.
+    repartition : bool
+        Whether to alternate between y=A*x and x=A*y.
+
+    Notes
+    -----
+    This function performs sparse matrix-vector multiplication with optional
+    repartitioning. When repartition is True, it alternates between computing
+    y = A*x and x = A*y to simulate data updates.
+
+    For Legate, it uses the dot method with pre-allocated output arrays.
+    For other backends, it uses the @ operator.
+    """
     if use_legate:
         if repartition and i % 2:
             A.dot(y, out=x)
@@ -32,6 +78,30 @@ def spmv_dispatch(A, x, y, i, repartition):
 
 
 def run_spmv(A, iters, repartition, timer):
+    """Run sparse matrix-vector multiplication benchmark.
+
+    Parameters
+    ----------
+    A : sparse matrix
+        The sparse matrix to benchmark.
+    iters : int
+        Number of iterations to run.
+    repartition : bool
+        Whether to use repartitioning (alternate x and y).
+    timer : Timer
+        Timer object for measuring performance.
+
+    Notes
+    -----
+    This function runs a benchmark of sparse matrix-vector multiplication.
+    It includes warm-up runs and measures the total time and time per iteration.
+
+    The function prints:
+    - Matrix dimensions and number of non-zeros
+    - Number of iterations
+    - Total elapsed time
+    - Time per iteration
+    """
     x = np.ones((A.shape[1],))
     y = np.zeros((A.shape[0],))
 

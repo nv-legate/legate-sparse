@@ -77,7 +77,8 @@ cusparseHandle_t get_cusparse()
 
 class LoadCUDALibsTask : public SparseTask<LoadCUDALibsTask> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_LOAD_CUDALIBS};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_LOAD_CUDALIBS}};
 
  public:
   static void gpu_variant(legate::TaskContext context)
@@ -90,7 +91,8 @@ class LoadCUDALibsTask : public SparseTask<LoadCUDALibsTask> {
 
 class UnloadCUDALibsTask : public SparseTask<UnloadCUDALibsTask> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_UNLOAD_CUDALIBS};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_UNLOAD_CUDALIBS}};
 
  public:
   static void gpu_variant(legate::TaskContext context)
@@ -101,10 +103,10 @@ class UnloadCUDALibsTask : public SparseTask<UnloadCUDALibsTask> {
   }
 };
 
-static void __attribute__((constructor)) register_tasks(void)
-{
+static const auto sparse_reg_task_ = []() -> char {
   LoadCUDALibsTask::register_variants();
   UnloadCUDALibsTask::register_variants();
-}
+  return 0;
+}();
 
 }  // namespace sparse

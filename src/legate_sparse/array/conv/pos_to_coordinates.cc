@@ -44,10 +44,10 @@ struct ExpandPosToCoordinatesImplBody<VariantKind::CPU, INDEX_CODE> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void)
-{
+static const auto sparse_reg_task_ = []() -> char {
   ExpandPosToCoordinates::register_variants();
-}
+  return 0;
+}();
 }  // namespace
 
 }  // namespace sparse

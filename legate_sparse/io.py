@@ -24,6 +24,38 @@ from .utils import store_to_cupynumeric_array
 
 @track_provenance(runtime.sparse_library)
 def mmread(source):
+    """Read a sparse matrix from a Matrix Market (.mtx) file.
+
+    Parameters
+    ----------
+    source : str
+        The filename or path to the Matrix Market file to read.
+
+    Returns
+    -------
+    csr_array
+        A sparse matrix in CSR format loaded from the file.
+
+    Notes
+    -----
+    This function reads Matrix Market format files and converts them
+    to CSR format. The Matrix Market format is a standard format for
+    storing sparse matrices. For more information on the format, see
+    https://math.nist.gov/MatrixMarket/formats.html.
+
+    The function assumes that all nodes in the system can access the
+    file, so no special file distribution is needed.
+
+    The implementation reads the file in COO format and then converts
+    to CSR format for efficient storage and operations.
+
+    Examples
+    --------
+    >>> from legate_sparse import mmread
+    >>> A = mmread("matrix.mtx")
+    >>> print(A.shape)
+    (1000, 1000)
+    """
     # TODO (rohany): We'll assume for now that all of the nodes in the system
     # can access the file passed in, so we don't need to worry about where this
     # task gets mapped to.

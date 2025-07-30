@@ -39,7 +39,11 @@ struct ScaleRect1ImplBody<VariantKind::CPU> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void) { ScaleRect1::register_variants(); }
+static const auto sparse_reg_task_ = []() -> char {
+  ScaleRect1::register_variants();
+  return 0;
+}();
+
 }  // namespace
 
 }  // namespace sparse

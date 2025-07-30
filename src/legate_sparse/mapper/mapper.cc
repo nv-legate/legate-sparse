@@ -32,9 +32,9 @@ std::vector<StoreMapping> LegateSparseMapper::store_mappings(
   const Task& task, const std::vector<StoreTarget>& options)
 {
   const auto& inputs = task.inputs();
-  std::vector<StoreMapping> mappings(inputs.size());
+  std::vector<StoreMapping> mappings;
   for (size_t i = 0; i < inputs.size(); i++) {
-    mappings[i] = StoreMapping::default_mapping(inputs[i].data(), options.front());
+    mappings.push_back(StoreMapping::default_mapping(inputs[i].data(), options.front()));
   }
   return std::move(mappings);
 }
@@ -64,9 +64,10 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
         auto crd  = task.inputs()[1];
         auto vals = task.inputs()[2];
 
-        std::size_t nrows_plus_one   = pos.domain().get_volume() + 1;
-        std::size_t nnz              = vals.domain().get_volume();
-        std::size_t factor_of_safety = 1.15;  // make sure we don't fail; 1.15 is arbitrary
+        std::size_t nrows_plus_one = pos.domain().get_volume() + 1;
+        std::size_t nnz            = vals.domain().get_volume();
+        // make sure we don't fail; 1.15 is arbitrary
+        std::size_t factor_of_safety = static_cast<std::size_t>(1.15);
         std::size_t cusparseSpMV_buffer_size =
           factor_of_safety * std::ceil(nnz / 32.0) * sizeof(double);
         std::size_t legate_buffer_size = nrows_plus_one * (vals.type().size() + crd.type().size());
@@ -124,10 +125,13 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
       // and then update the estimate here
       return std::nullopt;
     }
-  }
 
-  LEGATE_ABORT("Unsupported Legate Sparse task_id: " + std::to_string(task_id));
-  return {};
+    default: {
+      // Handle any unhandled enum values
+      LEGATE_ABORT("Unsupported Legate Sparse task_id: " + std::to_string(task_id));
+      return {};
+    }
+  }
 }
 
 Scalar LegateSparseMapper::tunable_value(legate::TunableID tunable_id)

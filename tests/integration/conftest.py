@@ -8,8 +8,30 @@ import legate_sparse as sparse
 
 @pytest.fixture
 def create_mask():
-    """
-    Create a boolean mask matrix with a random sparsity pattern
+    """Create a boolean mask matrix with a random sparsity pattern.
+
+    This fixture creates equivalent boolean mask matrices in both SciPy and
+    Legate Sparse formats for testing purposes.
+
+    Parameters
+    ----------
+    rows : int
+        Number of rows (and columns) in the square matrix.
+    density : float, optional
+        Density of non-zero elements. Default is 0.3.
+
+    Returns
+    -------
+    tuple
+        (A_scipy, A_sparse) - Equivalent boolean matrices in SciPy and
+        Legate Sparse formats.
+
+    Notes
+    -----
+    The fixture ensures that both matrices have identical sparsity patterns
+    and values. It verifies equivalence by converting both to dense format
+    and checking that they are numerically close.
+
     """
 
     def _create_mask(rows, density=0.3):
@@ -39,8 +61,32 @@ def create_mask():
 
 @pytest.fixture
 def create_matrix():
-    """
-    Create matrices in SciPy and Legate Sparse that are equivalent
+    """Create matrices in SciPy and Legate Sparse that are equivalent.
+
+    This fixture creates equivalent sparse matrices in both SciPy and
+    Legate Sparse formats for testing purposes.
+
+    Parameters
+    ----------
+    N : int
+        Number of rows (and columns) in the square matrix.
+    tol : float, optional
+        Threshold for sparsity. Values below this threshold are set to zero.
+        Default is 0.5.
+
+    Returns
+    -------
+    tuple
+        (A_scipy, A_sparse) - Equivalent sparse matrices in SciPy and
+        Legate Sparse formats.
+
+    Notes
+    -----
+    The fixture uses simple_system_gen to create a dense matrix, then
+    converts it to sparse format in both libraries. It verifies equivalence
+    by converting both to dense format and checking that they are numerically
+    close.
+
     """
 
     def _create_matrix(N, tol=0.5):

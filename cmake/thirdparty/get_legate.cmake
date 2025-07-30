@@ -24,6 +24,7 @@ function(find_or_configure_legate)
   include("${rapids-cmake-dir}/cpm/detail/package_details.cmake")
   rapids_cpm_package_details(legate version git_repo git_branch shallow exclude_from_all)
 
+  set(version ${PKG_VERSION})
   set(exclude_from_all ${PKG_EXCLUDE_FROM_ALL})
   if(PKG_BRANCH)
     set(git_branch "${PKG_BRANCH}")

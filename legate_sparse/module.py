@@ -55,16 +55,66 @@ from .io import mmread  # noqa: F401
 from .types import coord_ty, nnz_ty  # noqa: F401
 
 
-# is_sparse_matrix returns whether or not an object is a legate
-# sparse created sparse matrix.
-def is_sparse_matrix(o):
-    return any((isinstance(o, csr_array),))
+# returns whether or not an object is a legate sparse created sparse matrix.
+def _is_sparse_matrix(obj) -> bool:
+    return any((isinstance(obj, csr_array), isinstance(obj, dia_array)))
+
+def isspmatrix(obj) -> bool:
+    """Check if an object is a legate sparse matrix.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is a legate sparse matrix, False otherwise.
+
+    Notes
+    -----
+    This function checks if the object is an instance of any supported
+    sparse matrix format in legate_sparse. Currently, only
+    CSR and DIA formats for supported.
+    """
+    return _is_sparse_matrix(obj)
 
 
-issparse = is_sparse_matrix
-isspmatrix = is_sparse_matrix
+def issparse(obj) -> bool:
+    """Check if an object is a legate sparse matrix.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is a legate sparse matrix, False otherwise.
+
+    Notes
+    -----
+    This function checks if the object is an instance of any supported
+    sparse matrix format in legate_sparse. Currently, only
+    CSR and DIA formats for supported.
+    """
+    return _is_sparse_matrix(obj)
 
 
 # Variants for each particular format type.
-def isspmatrix_csr(o):
-    return isinstance(o, csr_array)
+def isspmatrix_csr(obj):
+    """Check if an object is a CSR sparse matrix.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is a CSR sparse matrix, False otherwise.
+    """
+    return isinstance(obj, csr_array)
