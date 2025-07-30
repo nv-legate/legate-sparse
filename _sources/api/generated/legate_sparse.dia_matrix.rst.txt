@@ -1,0 +1,57 @@
+﻿legate\_sparse.dia\_matrix
+==========================
+
+.. currentmodule:: legate_sparse
+
+.. autoclass:: dia_matrix
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~dia_matrix.__init__
+      ~dia_matrix.arcsin
+      ~dia_matrix.arcsinh
+      ~dia_matrix.arctan
+      ~dia_matrix.arctanh
+      ~dia_matrix.asformat
+      ~dia_matrix.astype
+      ~dia_matrix.ceil
+      ~dia_matrix.copy
+      ~dia_matrix.deg2rad
+      ~dia_matrix.expm1
+      ~dia_matrix.floor
+      ~dia_matrix.log1p
+      ~dia_matrix.nnz_to_pos
+      ~dia_matrix.nnz_to_pos_cls
+      ~dia_matrix.rad2deg
+      ~dia_matrix.rint
+      ~dia_matrix.sign
+      ~dia_matrix.sin
+      ~dia_matrix.sinh
+      ~dia_matrix.sqrt
+      ~dia_matrix.sum
+      ~dia_matrix.tan
+      ~dia_matrix.tanh
+      ~dia_matrix.tocsr
+      ~dia_matrix.transpose
+      ~dia_matrix.trunc
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~dia_matrix.T
+      ~dia_matrix.data
+      ~dia_matrix.nnz
+      ~dia_matrix.offsets
+   
+   

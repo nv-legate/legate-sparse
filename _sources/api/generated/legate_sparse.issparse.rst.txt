@@ -1,0 +1,6 @@
+﻿legate\_sparse.issparse
+=======================
+
+.. currentmodule:: legate_sparse
+
+.. autofunction:: issparse

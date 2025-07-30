@@ -1,0 +1,6 @@
+﻿legate\_sparse.linalg.gmres
+===========================
+
+.. currentmodule:: legate_sparse.linalg
+
+.. autofunction:: gmres

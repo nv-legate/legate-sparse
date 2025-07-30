@@ -1,0 +1,6 @@
+﻿legate\_sparse.isspmatrix
+=========================
+
+.. currentmodule:: legate_sparse
+
+.. autofunction:: isspmatrix

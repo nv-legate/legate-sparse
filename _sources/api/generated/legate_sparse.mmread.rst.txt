@@ -1,0 +1,6 @@
+﻿legate\_sparse.mmread
+=====================
+
+.. currentmodule:: legate_sparse
+
+.. autofunction:: mmread

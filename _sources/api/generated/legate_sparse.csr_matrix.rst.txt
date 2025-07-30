@@ -1,0 +1,74 @@
+﻿legate\_sparse.csr\_matrix
+==========================
+
+.. currentmodule:: legate_sparse
+
+.. autoclass:: csr_matrix
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~csr_matrix.__init__
+      ~csr_matrix.arcsin
+      ~csr_matrix.arcsinh
+      ~csr_matrix.arctan
+      ~csr_matrix.arctanh
+      ~csr_matrix.asformat
+      ~csr_matrix.astype
+      ~csr_matrix.ceil
+      ~csr_matrix.conj
+      ~csr_matrix.copy
+      ~csr_matrix.deg2rad
+      ~csr_matrix.diagonal
+      ~csr_matrix.dot
+      ~csr_matrix.expm1
+      ~csr_matrix.floor
+      ~csr_matrix.get_data
+      ~csr_matrix.get_indices
+      ~csr_matrix.get_indptr
+      ~csr_matrix.has_canonical_format
+      ~csr_matrix.has_sorted_indices
+      ~csr_matrix.log1p
+      ~csr_matrix.make_with_same_nnz_structure
+      ~csr_matrix.multiply
+      ~csr_matrix.nnz_to_pos
+      ~csr_matrix.nnz_to_pos_cls
+      ~csr_matrix.nonzero
+      ~csr_matrix.rad2deg
+      ~csr_matrix.rint
+      ~csr_matrix.set_data
+      ~csr_matrix.set_indices
+      ~csr_matrix.sign
+      ~csr_matrix.sin
+      ~csr_matrix.sinh
+      ~csr_matrix.sqrt
+      ~csr_matrix.sum
+      ~csr_matrix.tan
+      ~csr_matrix.tanh
+      ~csr_matrix.tocsr
+      ~csr_matrix.todense
+      ~csr_matrix.transpose
+      ~csr_matrix.trunc
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~csr_matrix.T
+      ~csr_matrix.data
+      ~csr_matrix.dim
+      ~csr_matrix.dtype
+      ~csr_matrix.indices
+      ~csr_matrix.indptr
+      ~csr_matrix.nnz
+   
+   

@@ -1,0 +1,74 @@
+﻿legate\_sparse.csr\_array
+=========================
+
+.. currentmodule:: legate_sparse
+
+.. autoclass:: csr_array
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~csr_array.__init__
+      ~csr_array.arcsin
+      ~csr_array.arcsinh
+      ~csr_array.arctan
+      ~csr_array.arctanh
+      ~csr_array.asformat
+      ~csr_array.astype
+      ~csr_array.ceil
+      ~csr_array.conj
+      ~csr_array.copy
+      ~csr_array.deg2rad
+      ~csr_array.diagonal
+      ~csr_array.dot
+      ~csr_array.expm1
+      ~csr_array.floor
+      ~csr_array.get_data
+      ~csr_array.get_indices
+      ~csr_array.get_indptr
+      ~csr_array.has_canonical_format
+      ~csr_array.has_sorted_indices
+      ~csr_array.log1p
+      ~csr_array.make_with_same_nnz_structure
+      ~csr_array.multiply
+      ~csr_array.nnz_to_pos
+      ~csr_array.nnz_to_pos_cls
+      ~csr_array.nonzero
+      ~csr_array.rad2deg
+      ~csr_array.rint
+      ~csr_array.set_data
+      ~csr_array.set_indices
+      ~csr_array.sign
+      ~csr_array.sin
+      ~csr_array.sinh
+      ~csr_array.sqrt
+      ~csr_array.sum
+      ~csr_array.tan
+      ~csr_array.tanh
+      ~csr_array.tocsr
+      ~csr_array.todense
+      ~csr_array.transpose
+      ~csr_array.trunc
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~csr_array.T
+      ~csr_array.data
+      ~csr_array.dim
+      ~csr_array.dtype
+      ~csr_array.indices
+      ~csr_array.indptr
+      ~csr_array.nnz
+   
+   

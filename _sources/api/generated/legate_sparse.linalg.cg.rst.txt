@@ -1,0 +1,6 @@
+﻿legate\_sparse.linalg.cg
+========================
+
+.. currentmodule:: legate_sparse.linalg
+
+.. autofunction:: cg

@@ -1,0 +1,46 @@
+.. _practices:
+
+Best practices
+==============
+
+Writing idiomatic Python code is essential for writing efficient
+Legate Sparse programs. This means that data types and APIs that 
+are native to python and libraries in python like `NumPy` and `SciPy` 
+should be used as much as possible. General best practices for
+writing idiomatic Python code are given in the
+`cuPyNumeric best practices <https://docs.nvidia.com/cupynumeric/latest/user/practices.html>`_ 
+documentation. Many of those best practices are applicable 
+to Legate Sparse as well. Note that 
+`guidelines on designing applications <https://docs.nvidia.com/cupynumeric/latest/user/practices.html#guidelines-on-using-cupynumeric-apis>`_ 
+for cuPyNumeric are also applicable to Legate Sparse.
+
+A common mistake users coming from a C, C++, or Fortran background 
+do in their Python code is to mimic the logic 
+of their existing code and loop over elements of an array. 
+This will be inefficient and will not scale to large problem sizes. 
+Instead, users need to think of the operation globally and for the entire
+domain and identify as much as possible the APIs from NumPy, SciPy or 
+other libraries that perform the corresponding operation. This leads
+to vectorized implementations and results in better performance as the problem
+size increases.
+
+For instance, if your algorithm implemenents a `k` nearest-neighbor algorithm
+in C or Fortran, the first step would be to identify existing Python libraries 
+that support computation of nearest neighbors efficiently 
+and leverage their APIs as much as possible. This ensures interoperability
+between Python libraries while ensuring that performance is not compromised.
+For this specific example, the user should refer to `scipy.spatial` for all
+spatial neighbor search algorithms and use the APIs from that library as much
+as possible even if those APIs are not supported within the Legate ecosystem.
+However, for algorithms that are simple and those that can be trivially
+implemented using existing NumPy and SciPy Sparse APIs, users are encouraged
+to implement them until the APIs are supported in Legate libraries. We recommend
+that you file an issue to the Legate Sparse or cuPyNumeric repositories
+to request the support of the APIs so that we can prioritize them.
+
+Keep in mind that many sparse matrix algorithms and graph algorithms have many similarities.
+Algorithms like breadth-first search (BFS) and depth-first search (DFS) that 
+have applications in sparse matrix algorithms can be implemented using graph algorithms.
+We recommend users to leverage existing scientific computing libraries and use their APIs
+as much as possible. Particularly, take a look at all the modules in `scipy`_ and leverage
+their APIs as much as possible.
