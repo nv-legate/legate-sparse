@@ -59,6 +59,7 @@ from .types import coord_ty, nnz_ty  # noqa: F401
 def _is_sparse_matrix(obj) -> bool:
     return any((isinstance(obj, csr_array), isinstance(obj, dia_array)))
 
+
 def isspmatrix(obj) -> bool:
     """Check if an object is a legate sparse matrix.
 

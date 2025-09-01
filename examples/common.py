@@ -171,8 +171,7 @@ class DummyScope:
     that may or may not use resource scoping.
     """
 
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
     def __enter__(self):
         """Enter the context (no-op)."""

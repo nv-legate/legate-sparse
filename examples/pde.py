@@ -218,7 +218,9 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         # If we're testing throughput, run only the prescribed number of iterations.
         if throughput:
             if use_legate:
-                p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters, conv_test_iters=max_iters)
+                p_sol, iters = linalg.cg(
+                    A, bflat, rtol=tol, maxiter=max_iters, conv_test_iters=max_iters
+                )
             else:
                 p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters)
         else:

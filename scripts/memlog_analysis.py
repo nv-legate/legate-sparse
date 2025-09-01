@@ -16,10 +16,10 @@ Usage:
 
     # Parse the log file
     allocations = parse_memlog('memlog.txt')
-    
+
     # Export to CSV
     export_to_csv(allocations, 'memory_analysis.csv')
-    
+
     # Create visualizations (requires pandas, matplotlib, seaborn)
     visualize_allocations(allocations)
 """  # noqa: W293
