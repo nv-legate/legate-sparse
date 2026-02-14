@@ -32,7 +32,7 @@
 <link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
   
   <!-- So that users can add custom icons -->
@@ -41,25 +41,31 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=0384a625"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+
+
+    <script src="../../_static/documentation_options.js?v=ff4772c6"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=4ea706d9"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/generated/legate_sparse.mmread';</script>
+
     <link rel="icon" href="../../_static/favicon.png"/>
+
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Frequently Asked Questions" href="../../faqs.html" />
     <link rel="prev" title="legate_sparse.isspmatrix_csr" href="legate_sparse.isspmatrix_csr.html" />
 
+
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="25.05" />
+  <meta name="docsearch:version" content="26.02" />
 
 
   </head>
+
   
   
   <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
@@ -67,6 +73,8 @@
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
@@ -280,6 +288,7 @@
 
 
 
+
 <li class="toctree-l1"><a class="reference internal" href="../../faqs.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../developer/index.html">Developer guide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../developer/CONTRIBUTING.html">Contributing</a></li>
@@ -345,8 +354,36 @@
 <h1>legate_sparse.mmread<a class="headerlink" href="#legate-sparse-mmread" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="legate_sparse.mmread">
-<span class="sig-prename descclassname"><span class="pre">legate_sparse.</span></span><span class="sig-name descname"><span class="pre">mmread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#legate_sparse.mmread" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">legate_sparse.</span></span><span class="sig-name descname"><span class="pre">mmread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr.csr_array"><span class="pre">csr_array</span></a></span></span><a class="headerlink" href="#legate_sparse.mmread" title="Link to this definition">#</a></dt>
+<dd><p>Read a sparse matrix from a Matrix Market (.mtx) file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The filename or path to the Matrix Market file to read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A sparse matrix in CSR format loaded from the file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr_array">csr_array</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This function reads Matrix Market format files and converts them
+to CSR format. The Matrix Market format is a standard format for
+storing sparse matrices. For more information on the format, see
+<a class="reference external" href="https://math.nist.gov/MatrixMarket/formats.html">https://math.nist.gov/MatrixMarket/formats.html</a>.</p>
+<p>The function assumes that all nodes in the system can access the
+file, so no special file distribution is needed.</p>
+<p>The implementation reads the file in COO format and then converts
+to CSR format for efficient storage and operations.</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">legate_sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">mmread</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">A</span> <span class="o">=</span> <span class="n">mmread</span><span class="p">(</span><span class="s2">&quot;matrix.mtx&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="go">(1000, 1000)</span>
+</pre></div>
+</div>
+</dd></dl>
 
 </section>
 
@@ -416,9 +453,11 @@
     </div>
   </div>
   
+
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
   <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
 <script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -441,12 +480,7 @@
   
   
   
-  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Manage My Privacy</a>
-   | 
-  
-  
-  
-  <a class="external" href="https://www.nvidia.com/en-us/preferences/start/">Do Not Sell or Share My Data</a>
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
    | 
   
   

@@ -21,7 +21,7 @@ arguments:
 
   legate --launcher srun --nodes 2 script.py <script options>
 
-For more information on using Legate for multi-node executions, see 
+For more information on using Legate for multi-node executions, see
 `Distributed Launch <https://docs.nvidia.com/legate/latest/usage.html#distributed-launch>`_.
 
 Using a manual task manager
@@ -59,13 +59,13 @@ variables, for example:
 Resource Scoping
 ----------------
 
-It is possible to scope the execution of a Legate Sparse program to a specific 
+It is possible to scope the execution of a Legate Sparse program to a specific
 processor type such as OMP, CPU, or GPU. This is useful in cases where, for instance,
-the creation of sparse matrices is memory intensive and can be done on the CPU and 
-parallelized using OpenMP, while the iterative 
+the creation of sparse matrices is memory intensive and can be done on the CPU and
+parallelized using OpenMP, while the iterative
 sparse matrix operations can be done on the GPU.
 
-The implementation of resource scoping in Legate Sparse is based on the 
+The implementation of resource scoping in Legate Sparse is based on the
 `Resource Scoping <https://docs.nvidia.com/legate/latest/usage.html#resource-scoping>`_
 feature of Legate.
 
@@ -83,7 +83,7 @@ on the CPU using OpenMP and solve it on the GPU.
     num_cpus = all_devices.count(TaskTarget.CPU)
 
     # processors for the build and solve phases
-    solve_procs = None 
+    solve_procs = None
     build_procs = None
 
     # set processors for the build phase
@@ -101,11 +101,11 @@ on the CPU using OpenMP and solve it on the GPU.
         solve_procs = all_devices.only(TaskTarget.OMP)
     else:
         solve_procs = all_devices.only(TaskTarget.CPU)
-    
+
     # perform the compute on respective processors
     with build_procs:
         mat, rhs = build_sparse_matrix()
-    
+
     with solve_procs:
         solution = solve_sparse_matrix(mat, rhs)
 

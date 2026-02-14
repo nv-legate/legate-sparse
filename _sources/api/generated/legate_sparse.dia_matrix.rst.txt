@@ -53,5 +53,11 @@
       ~dia_matrix.data
       ~dia_matrix.nnz
       ~dia_matrix.offsets
+      ~dia_matrix.size
+      ~dia_matrix.shape
+      ~dia_matrix.pos
+      ~dia_matrix.dtype
+      ~dia_matrix.format
+      ~dia_matrix.crd
    
    

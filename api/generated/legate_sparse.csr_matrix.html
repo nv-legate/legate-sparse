@@ -32,7 +32,7 @@
 <link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
   
   <!-- So that users can add custom icons -->
@@ -41,25 +41,31 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=0384a625"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+
+
+    <script src="../../_static/documentation_options.js?v=ff4772c6"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=4ea706d9"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/generated/legate_sparse.csr_matrix';</script>
+
     <link rel="icon" href="../../_static/favicon.png"/>
+
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="legate_sparse.dia_matrix" href="legate_sparse.dia_matrix.html" />
     <link rel="prev" title="legate_sparse.issparse" href="legate_sparse.issparse.html" />
 
+
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="25.05" />
+  <meta name="docsearch:version" content="26.02" />
 
 
   </head>
+
   
   
   <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
@@ -67,6 +73,8 @@
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
@@ -280,6 +288,7 @@
 
 
 
+
 <li class="toctree-l1"><a class="reference internal" href="../../faqs.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../developer/index.html">Developer guide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../developer/CONTRIBUTING.html">Contributing</a></li>
@@ -346,7 +355,175 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="legate_sparse.csr_matrix">
 <span class="sig-prename descclassname"><span class="pre">legate_sparse.</span></span><span class="sig-name descname"><span class="pre">csr_matrix</span></span><a class="headerlink" href="#legate_sparse.csr_matrix" title="Link to this definition">#</a></dt>
-<dd><p>alias of <a class="reference internal" href="legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr.csr_array"><code class="xref py py-class docutils literal notranslate"><span class="pre">csr_array</span></code></a></p>
+<dd><p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code>(arg[, shape, dtype, copy])</p></td>
+<td><p>Initialize a CSR array.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">arcsin</span></code>()</p></td>
+<td><p>Element-wise arcsin.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">arcsinh</span></code>()</p></td>
+<td><p>Element-wise arcsinh.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">arctan</span></code>()</p></td>
+<td><p>Element-wise arctan.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">arctanh</span></code>()</p></td>
+<td><p>Element-wise arctanh.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">asformat</span></code>(format[, copy])</p></td>
+<td><p>Convert this matrix to a specified format.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">astype</span></code>(dtype[, casting, copy])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ceil</span></code>()</p></td>
+<td><p>Element-wise ceil.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conj</span></code>([copy])</p></td>
+<td><p>Element-wise complex conjugate.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code>()</p></td>
+<td><p>Returns a copy of this matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">deg2rad</span></code>()</p></td>
+<td><p>Element-wise deg2rad.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">diagonal</span></code>([k])</p></td>
+<td><p>Return the k-th diagonal of the matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dot</span></code>(other[, out])</p></td>
+<td><p>Ordinary dot product.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">expm1</span></code>()</p></td>
+<td><p>Element-wise expm1.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">floor</span></code>()</p></td>
+<td><p>Element-wise floor.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_data</span></code>()</p></td>
+<td><p>Get the data array of the CSR matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_indices</span></code>()</p></td>
+<td><p>Get the column indices array of the CSR matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_indptr</span></code>()</p></td>
+<td><p>Get the index pointer array of the CSR matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_canonical_format</span></code>()</p></td>
+<td><p>Determine whether the matrix is in canonical format.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_sorted_indices</span></code>()</p></td>
+<td><p>Determine whether the matrix has sorted indices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log1p</span></code>()</p></td>
+<td><p>Element-wise log1p.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">multiply</span></code>(other)</p></td>
+<td><p>Point-wise multiplication by another matrix, vector, or scalar.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">nnz_to_pos</span></code>(q_nnz)</p></td>
+<td><p>Convert non-zero counts to position arrays for this instance.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">nnz_to_pos_cls</span></code>(q_nnz)</p></td>
+<td><p>Convert non-zero counts to position arrays.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">nonzero</span></code>()</p></td>
+<td><p>Return the indices of the non-zero elements.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">rad2deg</span></code>()</p></td>
+<td><p>Element-wise rad2deg.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">rint</span></code>()</p></td>
+<td><p>Element-wise rint.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_data</span></code>(data)</p></td>
+<td><p>Set the data array of the CSR matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_indices</span></code>(indices)</p></td>
+<td><p>Set the column indices array of the CSR matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sign</span></code>()</p></td>
+<td><p>Element-wise sign.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sin</span></code>()</p></td>
+<td><p>Element-wise sin.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sinh</span></code>()</p></td>
+<td><p>Element-wise sinh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sqrt</span></code>()</p></td>
+<td><p>Element-wise sqrt.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sum</span></code>([axis, dtype, out])</p></td>
+<td><p>Sum the matrix elements over a given axis.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tan</span></code>()</p></td>
+<td><p>Element-wise tan.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tanh</span></code>()</p></td>
+<td><p>Element-wise tanh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tocsr</span></code>([copy])</p></td>
+<td><p>Convert this matrix to a CSR matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">todense</span></code>([order, out])</p></td>
+<td><p>Return a dense matrix representation of this matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">transpose</span></code>([axes, copy])</p></td>
+<td><p>Reverses the dimensions of the sparse matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trunc</span></code>()</p></td>
+<td><p>Element-wise trunc.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">T</span></code></p></td>
+<td><p>Transpose of the matrix</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">data</span></code></p></td>
+<td><p>CSR format data array of the matrix</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dim</span></code></p></td>
+<td><p>Number of dimensions (always 2 for CSR arrays).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype</span></code></p></td>
+<td><p>Data type of the array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">indices</span></code></p></td>
+<td><p>CSR format index array of the matrix</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">indptr</span></code></p></td>
+<td><p>CSR format index pointer array of the matrix</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">nnz</span></code></p></td>
+<td><p>Number of stored values, including explicit zeros.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">size</span></code></p></td>
+<td><p>Number of stored values</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pos</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">format</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">crd</span></code></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>alias of <a class="reference internal" href="legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr.csr_array"><code class="xref py py-class docutils literal notranslate"><span class="pre">csr_array</span></code></a></p>
 </dd></dl>
 
 </section>
@@ -417,9 +594,11 @@
     </div>
   </div>
   
+
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
   <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
 <script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -442,12 +621,7 @@
   
   
   
-  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Manage My Privacy</a>
-   | 
-  
-  
-  
-  <a class="external" href="https://www.nvidia.com/en-us/preferences/start/">Do Not Sell or Share My Data</a>
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
    | 
   
   

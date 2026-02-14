@@ -6,7 +6,7 @@ Building from source
 Basic build
 -----------
 
-Users must have a working installation of the `Legate`_ and `CuPyNumeric`_ 
+Users must have a working installation of the `Legate`_ and `CuPyNumeric`_
 libraries prior to installing Legate Sparse.
 
 .. note::

@@ -26,6 +26,14 @@ Sparse array classes
     csr_array - Compressed Sparse Row array
     dia_array - Sparse array with DIAgonal storage
 
+Sparse array functions
+======================
+
+.. autosummary::
+   :toctree: generated/
+
+   geam - Generalized sparse matrix addition (CSR)
+
 
 Identifying sparse arrays
 =========================

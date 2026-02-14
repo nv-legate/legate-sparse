@@ -34,7 +34,6 @@
       ~csr_array.has_canonical_format
       ~csr_array.has_sorted_indices
       ~csr_array.log1p
-      ~csr_array.make_with_same_nnz_structure
       ~csr_array.multiply
       ~csr_array.nnz_to_pos
       ~csr_array.nnz_to_pos_cls
@@ -70,5 +69,10 @@
       ~csr_array.indices
       ~csr_array.indptr
       ~csr_array.nnz
+      ~csr_array.size
+      ~csr_array.shape
+      ~csr_array.pos
+      ~csr_array.format
+      ~csr_array.crd
    
    

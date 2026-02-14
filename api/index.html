@@ -32,7 +32,7 @@
 <link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=df3ac72c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
   
   <!-- So that users can add custom icons -->
@@ -41,25 +41,31 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=0384a625"></script>
-    <script src="../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+
+
+    <script src="../_static/documentation_options.js?v=ff4772c6"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=4ea706d9"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/index';</script>
+
     <link rel="icon" href="../_static/favicon.png"/>
+
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Sparse linear algebra (legate_sparse.linalg)" href="linalg.html" />
     <link rel="prev" title="Examples" href="../examples/index.html" />
 
+
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="25.05" />
+  <meta name="docsearch:version" content="26.02" />
 
 
   </head>
+
   
   
   <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
@@ -67,6 +73,8 @@
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
@@ -280,6 +288,7 @@
 
 
 
+
 <li class="toctree-l1"><a class="reference internal" href="../faqs.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../developer/index.html">Developer guide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../developer/CONTRIBUTING.html">Contributing</a></li>
@@ -358,12 +367,20 @@
 <h1>Sparse array classes<a class="headerlink" href="#sparse-array-classes" title="Link to this heading">#</a></h1>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">csr_array</span></code></a>(self, arg[, shape, dtype, copy])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">csr_array</span></code></a>(arg[, shape, dtype, copy])</p></td>
 <td><p>Compressed Sparse Row array.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/legate_sparse.dia_array.html#legate_sparse.dia_array" title="legate_sparse.dia_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dia_array</span></code></a>(self, arg[, shape, dtype, copy])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/legate_sparse.dia_array.html#legate_sparse.dia_array" title="legate_sparse.dia_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dia_array</span></code></a>(arg[, shape, dtype, copy])</p></td>
 <td><p>Sparse matrix with DIAgonal storage.</p></td>
 </tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="sparse-array-functions">
+<h1>Sparse array functions<a class="headerlink" href="#sparse-array-functions" title="Link to this heading">#</a></h1>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
 </tbody>
 </table>
 </div>
@@ -384,10 +401,10 @@
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/legate_sparse.csr_matrix.html#legate_sparse.csr_matrix" title="legate_sparse.csr_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">csr_matrix</span></code></a></p></td>
-<td><p>alias of <a class="reference internal" href="generated/legate_sparse.csr_array.html#legate_sparse.csr_array" title="legate_sparse.csr.csr_array"><code class="xref py py-class docutils literal notranslate"><span class="pre">csr_array</span></code></a></p></td>
+<td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/legate_sparse.dia_matrix.html#legate_sparse.dia_matrix" title="legate_sparse.dia_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dia_matrix</span></code></a></p></td>
-<td><p>alias of <a class="reference internal" href="generated/legate_sparse.dia_array.html#legate_sparse.dia_array" title="legate_sparse.dia.dia_array"><code class="xref py py-class docutils literal notranslate"><span class="pre">dia_array</span></code></a></p></td>
+<td><p></p></td>
 </tr>
 </tbody>
 </table>
@@ -414,8 +431,8 @@
 <h1>Input/Output<a class="headerlink" href="#input-output" title="Link to this heading">#</a></h1>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/legate_sparse.mmread.html#legate_sparse.mmread" title="legate_sparse.mmread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mmread</span></code></a>(*args, **kwargs)</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/legate_sparse.mmread.html#legate_sparse.mmread" title="legate_sparse.mmread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mmread</span></code></a>(source)</p></td>
+<td><p>Read a sparse matrix from a Matrix Market (.mtx) file.</p></td>
 </tr>
 </tbody>
 </table>
@@ -474,6 +491,7 @@
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">API Reference</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#sparse-array-classes">Sparse array classes</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#sparse-array-functions">Sparse array functions</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#identifying-sparse-arrays">Identifying sparse arrays</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#sparse-matrix-classes">Sparse matrix classes</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#identifying-sparse-matrices">Identifying sparse matrices</a></li>
@@ -495,9 +513,11 @@
     </div>
   </div>
   
+
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
   <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
 <script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -520,12 +540,7 @@
   
   
   
-  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Manage My Privacy</a>
-   | 
-  
-  
-  
-  <a class="external" href="https://www.nvidia.com/en-us/preferences/start/">Do Not Sell or Share My Data</a>
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
    | 
   
   

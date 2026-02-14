@@ -1,9 +1,9 @@
 Installation
 ============
 
-Installaing Legate Sparse also installs the `Legate`_ and `cuPyNumeric`_ libraries. 
-The recommended way to install Legate Sparse is to use the conda packages. 
-For detailed information on building Legate and cuPyNumeric from source, 
+Installaing Legate Sparse also installs the `Legate`_ and `cuPyNumeric`_ libraries.
+The recommended way to install Legate Sparse is to use the conda packages.
+For detailed information on building Legate and cuPyNumeric from source,
 see build instructions for `Legate`_ and `cuPyNumeric`_.
 
 Installing Conda Packages
@@ -12,7 +12,7 @@ Installing Conda Packages
 The ``legate-sparse`` conda package already depends on ``legate`` and ``cupynumeric``,
 and it will install these dependencies automatically.
 
-To create a new environment and install: 
+To create a new environment and install:
 
 .. code-block:: sh
 

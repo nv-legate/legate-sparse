@@ -34,7 +34,6 @@
       ~csr_matrix.has_canonical_format
       ~csr_matrix.has_sorted_indices
       ~csr_matrix.log1p
-      ~csr_matrix.make_with_same_nnz_structure
       ~csr_matrix.multiply
       ~csr_matrix.nnz_to_pos
       ~csr_matrix.nnz_to_pos_cls
@@ -70,5 +69,10 @@
       ~csr_matrix.indices
       ~csr_matrix.indptr
       ~csr_matrix.nnz
+      ~csr_matrix.size
+      ~csr_matrix.shape
+      ~csr_matrix.pos
+      ~csr_matrix.format
+      ~csr_matrix.crd
    
    

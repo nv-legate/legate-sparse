@@ -53,5 +53,11 @@
       ~dia_array.data
       ~dia_array.nnz
       ~dia_array.offsets
+      ~dia_array.size
+      ~dia_array.shape
+      ~dia_array.pos
+      ~dia_array.dtype
+      ~dia_array.format
+      ~dia_array.crd
    
    

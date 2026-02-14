@@ -41,13 +41,13 @@ Guidelines for performance benchmarks
 -------------------------------------
 
 Manual partitioning of data for use with message-passing from Python (say,
-using mpi4py package) is not supported. If your code is manually 
-partitioned using MPI4Py or any other library, please rewrite the code 
+using mpi4py package) is not supported. If your code is manually
+partitioned using MPI4Py or any other library, please rewrite the code
 for sequential execution without any partitioning or communication primitives.
 
 Ensure that the problem size is large enough to offset runtime overheads
 associated with tasks. A rule of thumb is that the problem size should be large
-enough for a task granularity of about one millisecond on the GPU. There can 
+enough for a task granularity of about one millisecond on the GPU. There can
 be parts of the algorithm that don't lend themselves to concurrent execution
-due to dependencies between tasks. Having a large problem size is 
+due to dependencies between tasks. Having a large problem size is
 crucial to offset the runtime overheads associated with tasks in such cases.
