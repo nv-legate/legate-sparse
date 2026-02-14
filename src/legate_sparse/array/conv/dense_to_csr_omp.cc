@@ -23,6 +23,9 @@ using namespace legate;
 
 template <Type::Code VAL_CODE>
 struct DenseToCSRNNZImplBody<VariantKind::OMP, VAL_CODE> {
+  TaskContext context;
+  explicit DenseToCSRNNZImplBody(TaskContext context) : context(context) {}
+
   using VAL_TY = type_of<VAL_CODE>;
 
   void operator()(const AccessorWO<nnz_ty, 2>& nnz,
@@ -44,6 +47,9 @@ struct DenseToCSRNNZImplBody<VariantKind::OMP, VAL_CODE> {
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct DenseToCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit DenseToCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 

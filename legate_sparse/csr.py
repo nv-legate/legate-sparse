@@ -44,12 +44,14 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, cast
 
-import cupynumeric
-import numpy
-import scipy  # type: ignore
+import cupynumeric as cn
+import numpy as np
+import scipy
 from legate.core import (
     ImageComputationHint,
     Scalar,
@@ -60,12 +62,7 @@ from legate.core import (
     types,
 )
 
-from .base import (
-    CompressedBase,
-    DenseSparseBase,
-    pack_to_rect1_store,
-    unpack_rect1_store,
-)
+from .base import CompressedBase, pack_to_rect1_store, unpack_rect1_store
 from .config import SparseOpCode, rect1
 from .coverage import clone_scipy_arr_kind
 from .runtime import runtime
@@ -75,22 +72,31 @@ from .utils import (
     SUPPORTED_DATATYPES,
     array_from_store_or_array,
     cast_arr,
-    cast_to_common_type,
     cast_to_store,
     copy_store,
+    find_common_type,
     find_last_user_stacklevel,
     get_storage_type,
     get_store_from_cupynumeric_array,
+    is_dense,
     is_dtype_supported,
     is_scalar_like,
+    is_sparse,
     sort_by_rows_then_cols,
     store_from_store_or_array,
     store_to_cupynumeric_array,
 )
 
+if TYPE_CHECKING:
+    from typing import Any, Callable
+
+    import numpy.typing as npt
+
+    from cupynumeric.types import CastingKind
+
 
 @clone_scipy_arr_kind(scipy.sparse.csr_array)
-class csr_array(CompressedBase, DenseSparseBase):
+class csr_array(CompressedBase):
     """Compressed Sparse Row array.
 
     This can be instantiated in several ways:
@@ -187,7 +193,13 @@ class csr_array(CompressedBase, DenseSparseBase):
            [4, 5, 6]])
     """
 
-    def __init__(self, arg, shape=None, dtype=None, copy=False):
+    def __init__(
+        self,
+        arg: Any,
+        shape: tuple[int, ...] | None = None,
+        dtype: npt.dtype[Any] | None = None,
+        copy: bool = False,
+    ) -> None:
         """Initialize a CSR array.
 
         Parameters
@@ -233,11 +245,11 @@ class csr_array(CompressedBase, DenseSparseBase):
         # Note that cupynumeric.dtype(None) returns float64, so make
         # sure dtype is passed to csr_array if it is known apriori,
         # especially when copying the matrix
-        dtype = cupynumeric.dtype(dtype)
+        dtype = np.dtype(dtype)
 
         # If from numpy.array - convert to cupynumeric array first
-        if isinstance(arg, numpy.ndarray):
-            arg = cupynumeric.array(arg)
+        if isinstance(arg, np.ndarray):
+            arg = cn.array(arg)
 
         # from scipy.sparse.csr_array
         if isinstance(arg, scipy.sparse.csr_array) or isinstance(
@@ -247,7 +259,7 @@ class csr_array(CompressedBase, DenseSparseBase):
             arg = (arg.data, arg.indices, arg.indptr)
 
         # from dense cupynumeric array
-        if isinstance(arg, cupynumeric.ndarray):
+        if isinstance(arg, cn.ndarray):
             assert arg.ndim == 2
 
             shape = arg.shape
@@ -257,18 +269,18 @@ class csr_array(CompressedBase, DenseSparseBase):
             src_store = get_store_from_cupynumeric_array(arg)
 
             q_nnz = runtime.create_store(nnz_ty, shape=Shape((shape[0],)))
-            task = runtime.create_auto_task(SparseOpCode.DENSE_TO_CSR_NNZ)
+            task1 = runtime.create_auto_task(SparseOpCode.DENSE_TO_CSR_NNZ)
             promoted_q_nnz = q_nnz.promote(1, shape[1])
-            nnz_per_row_part = task.add_output(promoted_q_nnz)
-            src_part = task.add_input(src_store)
-            task.add_constraint(broadcast(nnz_per_row_part, (1,)))
-            task.add_constraint(align(nnz_per_row_part, src_part))
-            task.execute()
+            nnz_per_row_part = task1.add_output(promoted_q_nnz)
+            src_part = task1.add_input(src_store)
+            task1.add_constraint(broadcast(nnz_per_row_part, (1,)))
+            task1.add_constraint(align(nnz_per_row_part, src_part))
+            task1.execute()
 
             # Assemble the output CSR array using the non-zeros per row.
-            self.pos, nnz = self.nnz_to_pos(q_nnz)
+            self.pos, nnz_scalar = self.nnz_to_pos(q_nnz)
             # Block and convert the nnz future into an int.
-            nnz = int(nnz)
+            nnz = int(nnz_scalar)
             self.crd = runtime.create_store(coord_ty, shape=((nnz,)))
             self.vals = runtime.create_store(arg.dtype, shape=((nnz,)))
 
@@ -276,14 +288,14 @@ class csr_array(CompressedBase, DenseSparseBase):
             # and 2-D input array, our only option is launch single process
             # which will handle all of the data, which makes this funciton not usable
             # on scale.
-            task = runtime.create_manual_task(SparseOpCode.DENSE_TO_CSR, (1,))
+            task2 = runtime.create_manual_task(SparseOpCode.DENSE_TO_CSR, (1,))
 
             promoted_pos = self.pos.promote(1, shape[1])
-            task.add_input(promoted_pos)
-            src_part = task.add_input(src_store)
-            task.add_output(self.crd)
-            task.add_output(self.vals)
-            task.execute()
+            task2.add_input(promoted_pos)
+            task2.add_input(src_store)
+            task2.add_output(self.crd)
+            task2.add_output(self.vals)
+            task2.execute()
 
             # we ignore dtype (TODO: is this behaviour matches SciPy?) and use arg.dtype
             dtype = arg.dtype
@@ -298,7 +310,9 @@ class csr_array(CompressedBase, DenseSparseBase):
             self.canonical_format = arg.canonical_format
 
         elif isinstance(arg, tuple):
-            dtype, shape = self._init_from_tuple_inputs(arg, dtype, shape, copy)
+            dtype, shape = self._init_from_tuple_inputs(
+                arg, dtype, shape, copy
+            )
         else:
             raise NotImplementedError("Can't convert to CSR from the input")
 
@@ -315,13 +329,19 @@ class csr_array(CompressedBase, DenseSparseBase):
         if dtype is None:
             dtype = temp_vals_type
         if temp_vals_type is not dtype:
-            self.data = self.data.astype(dtype)
-        if not isinstance(dtype, numpy.dtype):
-            dtype = numpy.dtype(dtype)
+            self._data = self._data.astype(dtype)
+        if not isinstance(dtype, np.dtype):
+            dtype = np.dtype(dtype)
         # Saving the type
         self._dtype = dtype
 
-    def _init_from_tuple_inputs(self, arg, dtype, shape, copy):
+    def _init_from_tuple_inputs(
+        self,
+        arg: tuple[Any, ...],
+        dtype: npt.dtype[Any] | None,
+        shape: tuple[int, ...] | None,
+        copy: bool,
+    ) -> tuple[npt.dtype[Any], tuple[int, ...]]:
         """Initialize CSR array from tuple inputs.
 
         This internal method handles the various tuple-based constructor formats:
@@ -333,9 +353,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         ----------
         arg : tuple
             The input tuple in one of the supported formats.
-        dtype : dtype, optional
+        dtype : dtype
             The desired data type.
-        shape : tuple, optional
+        shape : tuple
             The shape of the array.
         copy : bool
             Whether to copy the input data.
@@ -353,12 +373,14 @@ class csr_array(CompressedBase, DenseSparseBase):
             If the tuple format is not supported.
         """
 
-        def _get_empty_csr(dtype, nrows_plus_one):
+        def _get_empty_csr(
+            dtype: npt.dtype[Any] | None, nrows_plus_one: int
+        ) -> tuple[cn.ndarray, cn.ndarray, cn.ndarray]:
             """Helper function to create empty CSR arrays."""
             return (
-                cupynumeric.zeros(0, dtype=dtype),
-                cupynumeric.zeros(0, dtype=coord_ty),
-                cupynumeric.zeros(nrows_plus_one, dtype=coord_ty),
+                cn.zeros(0, dtype=dtype),
+                cn.zeros(0, dtype=coord_ty),
+                cn.zeros(nrows_plus_one, dtype=coord_ty),
             )
 
         # Couple of options here
@@ -367,16 +389,14 @@ class csr_array(CompressedBase, DenseSparseBase):
             # csr_array((M, N), [dtype])
             if not isinstance(arg[1], tuple):
                 (M, N) = arg
-                if not isinstance(M, (int, numpy.integer)) or not isinstance(
-                    N, (int, numpy.integer)
+                if not isinstance(M, (int, np.integer)) or not isinstance(
+                    N, (int, np.integer)
                 ):
                     NotImplementedError(
                         "Input tuple for empty CSR ctor should be it's shape"
                     )
                 shape = arg
-                dtype = (
-                    cupynumeric.float64 if dtype is None else cupynumeric.dtype(dtype)
-                )
+                dtype = np.float64 if dtype is None else np.dtype(dtype)
 
                 # and pass this to next ctor
                 arg = _get_empty_csr(dtype, M + 1)
@@ -394,12 +414,12 @@ class csr_array(CompressedBase, DenseSparseBase):
                     copy = False
                 else:
                     # if passed numpy arrays - convert them
-                    if isinstance(st_row, numpy.ndarray):
-                        st_row = cupynumeric.array(st_row)
-                    if isinstance(st_col, numpy.ndarray):
-                        st_col = cupynumeric.array(st_col)
-                    if isinstance(st_data, numpy.ndarray):
-                        st_data = cupynumeric.array(st_data)
+                    if isinstance(st_row, np.ndarray):
+                        st_row = cn.array(st_row)
+                    if isinstance(st_col, np.ndarray):
+                        st_col = cn.array(st_col)
+                    if isinstance(st_data, np.ndarray):
+                        st_data = cn.array(st_data)
 
                     if not self.indices_sorted:
                         # NOTE that CSR format does not require sorting the data
@@ -407,9 +427,15 @@ class csr_array(CompressedBase, DenseSparseBase):
                         # sorted by rows and then by columns, so we sort the data
                         # by columns as well
 
-                        row_array = array_from_store_or_array(st_row, copy=copy)
-                        col_array = array_from_store_or_array(st_col, copy=copy)
-                        new_data = array_from_store_or_array(st_data, copy=copy)
+                        row_array = array_from_store_or_array(
+                            st_row, copy=copy
+                        )
+                        col_array = array_from_store_or_array(
+                            st_col, copy=copy
+                        )
+                        new_data = array_from_store_or_array(
+                            st_data, copy=copy
+                        )
 
                         indices = sort_by_rows_then_cols(row_array, col_array)
 
@@ -417,10 +443,10 @@ class csr_array(CompressedBase, DenseSparseBase):
                         row_array = row_array[indices]
                         col_array = col_array[indices]
 
-                        row_offsets = cupynumeric.append(
-                            cupynumeric.array([0]),
-                            cupynumeric.cumsum(
-                                cupynumeric.bincount(row_array, minlength=shape[0])
+                        row_offsets = cn.append(
+                            cn.array([0]),
+                            cn.cumsum(
+                                cn.bincount(row_array, minlength=shape[0])
                             ),
                         )
 
@@ -432,10 +458,10 @@ class csr_array(CompressedBase, DenseSparseBase):
                     else:
                         # we need to convert row indices to row offsets/indptr
                         row_array = array_from_store_or_array(st_row)
-                        row_offsets = cupynumeric.append(
-                            cupynumeric.array([0]),
-                            cupynumeric.cumsum(
-                                cupynumeric.bincount(row_array, minlength=shape[0])
+                        row_offsets = cn.append(
+                            cn.array([0]),
+                            cn.cumsum(
+                                cn.bincount(row_array, minlength=shape[0])
                             ),
                         )
                         if copy:
@@ -452,12 +478,12 @@ class csr_array(CompressedBase, DenseSparseBase):
             (data, indices, indptr) = arg
 
             # if passed numpy arrays - convert them
-            if isinstance(data, numpy.ndarray):
-                data = cupynumeric.array(data)
-            if isinstance(indices, numpy.ndarray):
-                indices = cupynumeric.array(indices).astype(coord_ty)
-            if isinstance(indptr, numpy.ndarray):
-                indptr = cupynumeric.array(indptr).astype(coord_ty)
+            if isinstance(data, np.ndarray):
+                data = cn.array(data)
+            if isinstance(indices, np.ndarray):
+                indices = cn.array(indices).astype(coord_ty)
+            if isinstance(indptr, np.ndarray):
+                indptr = cn.array(indptr).astype(coord_ty)
 
             # checking that shape matches with expectations for row_offsets
             if indptr.shape[0] == shape[0] + 1:
@@ -470,8 +496,12 @@ class csr_array(CompressedBase, DenseSparseBase):
                 )
                 # copy explicitly, just in case (there are paths that won't create temp object)
                 # For crd we enforce our internal type
-                self.crd = store_from_store_or_array(cast_arr(indices, coord_ty), copy)
-                self.vals = store_from_store_or_array(cast_to_store(data), copy)
+                self.crd = store_from_store_or_array(
+                    cast_arr(indices, coord_ty), copy
+                )
+                self.vals = store_from_store_or_array(
+                    cast_to_store(data), copy
+                )
 
             # Otherwise we assume that we are passing pos store from existing csr_array
             # This is internal only functionality, and we assume here only Store or cupynumeric.array
@@ -487,15 +517,22 @@ class csr_array(CompressedBase, DenseSparseBase):
 
             dtype = get_storage_type(data)
 
+        assert dtype is not None
+        assert shape is not None
+
         return dtype, shape
 
+    # correct return type value on this subclass
+    def _with_data(self, data: Any, copy: bool = True) -> csr_array:
+        return cast(csr_array, super()._with_data(data, copy))
+
     @property
-    def dim(self):
+    def dim(self) -> int:
         """Number of dimensions (always 2 for CSR arrays)."""
         return self.ndim
 
     @property
-    def nnz(self):
+    def nnz(self) -> int:
         """Number of stored values, including explicit zeros.
 
         Returns
@@ -506,7 +543,12 @@ class csr_array(CompressedBase, DenseSparseBase):
         return self.vals.shape[0]
 
     @property
-    def dtype(self):
+    def size(self) -> int:
+        """Number of stored values"""
+        return self.nnz
+
+    @property
+    def dtype(self) -> npt.dtype[Any]:
         """Data type of the array.
 
         Returns
@@ -518,7 +560,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         return self._dtype
 
     # Enable direct operation on the values array.
-    def get_data(self):
+    def get_data(self) -> cn.ndarray:
         """Get the data array of the CSR matrix.
 
         Returns
@@ -529,7 +571,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         return store_to_cupynumeric_array(self.vals)
 
     # From array,
-    def set_data(self, data):
+    def set_data(self, data: cn.ndarray) -> None:
         """Set the data array of the CSR matrix.
 
         Parameters
@@ -542,9 +584,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         AssertionError
             If data is not a cupynumeric.ndarray.
         """
-        if isinstance(data, numpy.ndarray):
-            data = cupynumeric.array(data)
-        assert isinstance(data, cupynumeric.ndarray)
+        if isinstance(data, np.ndarray):
+            data = cn.array(data)
+        assert isinstance(data, cn.ndarray)
         self.vals = get_store_from_cupynumeric_array(data)
         self._dtype = data.dtype
 
@@ -553,7 +595,7 @@ class csr_array(CompressedBase, DenseSparseBase):
     )
 
     # Enable direct operation on the indices array.
-    def get_indices(self):
+    def get_indices(self) -> cn.ndarray:
         """Get the column indices array of the CSR matrix.
 
         Returns
@@ -563,7 +605,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         return store_to_cupynumeric_array(self.crd)
 
-    def set_indices(self, indices):
+    def set_indices(self, indices: cn.ndarray) -> None:
         """Set the column indices array of the CSR matrix.
 
         Parameters
@@ -581,19 +623,21 @@ class csr_array(CompressedBase, DenseSparseBase):
         Setting new indices will mark the matrix as not having sorted indices
         and not being in canonical format.
         """
-        if isinstance(indices, numpy.ndarray):
-            indices = cupynumeric.array(indices)
-        assert isinstance(indices, cupynumeric.ndarray)
+        if isinstance(indices, np.ndarray):
+            indices = cn.array(indices)
+        assert isinstance(indices, cn.ndarray)
         self.crd = get_store_from_cupynumeric_array(indices)
         # we can't guarantee new indices are sorted
         self.canonical_format = False
         self.indices_sorted = False
 
     indices = property(
-        fget=get_indices, fset=set_indices, doc="CSR format index array of the matrix"
+        fget=get_indices,
+        fset=set_indices,
+        doc="CSR format index array of the matrix",
     )
 
-    def get_indptr(self):
+    def get_indptr(self) -> cn.ndarray:
         """Get the index pointer array of the CSR matrix.
 
         Returns
@@ -605,14 +649,14 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         row_start_st, row_end_st = unpack_rect1_store(self.pos)
         row_start = store_to_cupynumeric_array(row_start_st)
-        return cupynumeric.append(row_start, [self.nnz])
+        return cn.append(row_start, [self.nnz])
 
     # Disallow changing intptrs directly
     indptr = property(
         fget=get_indptr, doc="CSR format index pointer array of the matrix"
     )
 
-    def _get_row_indices(self):
+    def _get_row_indices(self) -> cn.ndarray:
         """Helper routine that converts pos to row indices.
 
         This internal method expands the compressed row storage format's position
@@ -638,7 +682,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         task.execute()
         return store_to_cupynumeric_array(row_indices)
 
-    def has_sorted_indices(self):
+    def has_sorted_indices(self) -> bool:
         """Determine whether the matrix has sorted indices.
 
         Returns
@@ -648,7 +692,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         return self.indices_sorted
 
-    def has_canonical_format(self):
+    def has_canonical_format(self) -> bool:
         """Determine whether the matrix is in canonical format.
 
         Returns
@@ -665,7 +709,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         return self.canonical_format
 
     # The rest of the methods
-    def diagonal(self, k=0):
+    def diagonal(self, k: int = 0) -> cn.ndarray:
         """Return the k-th diagonal of the matrix.
 
         Parameters
@@ -691,7 +735,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         rows, cols = self.shape
         if k <= -rows or k >= cols:
-            return cupynumeric.empty(0, dtype=self.dtype)
+            return cn.empty(0, dtype=self.dtype)
         output = runtime.create_store(
             self.dtype, shape=Shape((min(rows + min(k, 0), cols - max(k, 0)),))
         )
@@ -713,7 +757,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         task.execute()
         return store_to_cupynumeric_array(output)
 
-    def todense(self, order=None, out=None):
+    def todense(
+        self, order: str | None = None, out: cn.ndarray | None = None
+    ) -> cn.ndarray:
         """Return a dense matrix representation of this matrix.
 
         Parameters
@@ -744,25 +790,25 @@ class csr_array(CompressedBase, DenseSparseBase):
         if order is not None:
             raise NotImplementedError
         if out is not None:
-            out = cupynumeric.array(out)
+            out = cn.array(out)
             if out.dtype != self.dtype:
                 raise ValueError(
                     f"Output type {out.dtype} is not consistent with dtype {self.dtype}"
                 )
-            out = get_store_from_cupynumeric_array(out)
+            out_store = get_store_from_cupynumeric_array(out)
         elif out is None:
-            out = runtime.create_store(self.dtype, shape=self.shape)
+            out_store = runtime.create_store(self.dtype, shape=self.shape)
 
         task = runtime.create_manual_task(SparseOpCode.CSR_TO_DENSE, (1,))
         self.pos.promote(1, self.shape[1])
-        task.add_output(out)
+        task.add_output(out_store)
         task.add_input(self.pos)
         task.add_input(self.crd)
         task.add_input(self.vals)
         task.execute()
-        return store_to_cupynumeric_array(out)
+        return store_to_cupynumeric_array(out_store)
 
-    def multiply(self, other):
+    def multiply(self, other: Any) -> csr_array:
         """Point-wise multiplication by another matrix, vector, or scalar.
 
         Parameters
@@ -779,9 +825,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         -----
         This is equivalent to the * operator.
         """
-        return self * other
+        return cast(csr_array, self * other)
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: Any) -> csr_array:
         """Right multiplication by a scalar.
 
         Parameters
@@ -794,10 +840,10 @@ class csr_array(CompressedBase, DenseSparseBase):
         csr_array
             The result of the multiplication.
         """
-        return self * other
+        return cast(csr_array, self * other)
 
     # This is an element-wise operation now.
-    def __mul__(self, other):
+    def __mul__(self, other: Any) -> csr_array:
         """Element-wise multiplication.
 
         Parameters
@@ -820,10 +866,10 @@ class csr_array(CompressedBase, DenseSparseBase):
         Currently only supports scalar multiplication. Array multiplication
         is not implemented.
         """
-        if isinstance(other, numpy.ndarray):
-            other = cupynumeric.array(other)
+        if isinstance(other, np.ndarray):
+            other = cn.array(other)
 
-        if cupynumeric.ndim(other) == 0:
+        if cn.ndim(other) == 0:
             # If we have a scalar, then do an element-wise multiply on the
             # values array.
             new_vals = store_to_cupynumeric_array(self.vals) * other
@@ -832,7 +878,7 @@ class csr_array(CompressedBase, DenseSparseBase):
             raise NotImplementedError
 
     # rmatmul represents the operation other @ self.
-    def __rmatmul__(self, other):
+    def __rmatmul__(self, other: Any) -> cn.ndarray | csr_array:
         """Right matrix multiplication (other @ self).
 
         Parameters
@@ -858,7 +904,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         # Handle dense @ CSR
         raise NotImplementedError
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: Any) -> cn.ndarray | csr_array:
         """Matrix multiplication (self @ other).
 
         Parameters
@@ -877,7 +923,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         return self.dot(other)
 
-    def _compare_scalar(self, other, op):
+    def _compare_scalar(
+        self, other: object, op: Callable[..., cn.ndarray]
+    ) -> csr_array:
         """Helper method for element-wise comparison operations with scalars.
         This methods returns a boolean CSR array with True values where
         the comparison for op returns True.
@@ -898,7 +946,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         mask = op(store_to_cupynumeric_array(self.vals), other)
         col_indices = store_to_cupynumeric_array(self.crd)[mask]
         row_indices = self._get_row_indices()[mask]
-        vals = cupynumeric.ones(row_indices.size, dtype=bool)
+        vals = cn.ones(row_indices.size, dtype=bool)
 
         # NOTE:
         # If the data was already sorted by rows and cols in self,
@@ -906,12 +954,10 @@ class csr_array(CompressedBase, DenseSparseBase):
         # but there's no clean way to pass to the class that the data
         # is already sorted
         return csr_array(
-            (vals, (row_indices, col_indices)),
-            shape=self.shape,
-            dtype=bool,
+            (vals, (row_indices, col_indices)), shape=self.shape, dtype=bool
         )
 
-    def __gt__(self, other):
+    def __gt__(self, other: object) -> csr_array:
         """Element-wise greater than comparison with a scalar value.
         This operates only on the existing non-zero elements of the matrix.
 
@@ -936,9 +982,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         >>> A = csr_array(...)
         >>> mask = A > 0.5  # Returns boolean CSR array
         """
-        return self._compare_scalar(other, cupynumeric.greater)
+        return self._compare_scalar(other, cn.greater)
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> csr_array:
         """Element-wise less than comparison with a scalar value.
         This operates only on the existing non-zero elements of the matrix.
 
@@ -963,9 +1009,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         >>> A = csr_array(...)
         >>> mask = A < 0.5  # Returns boolean CSR array
         """
-        return self._compare_scalar(other, cupynumeric.less)
+        return self._compare_scalar(other, cn.less)
 
-    def __ge__(self, other):
+    def __ge__(self, other: object) -> csr_array:
         """Element-wise greater than or equal comparison with a scalar value.
         This operates only on the existing non-zero elements of the matrix.
 
@@ -990,9 +1036,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         >>> A = csr_array(...)
         >>> mask = A >= 0.5  # Returns boolean CSR array
         """
-        return self._compare_scalar(other, cupynumeric.greater_equal)
+        return self._compare_scalar(other, cn.greater_equal)
 
-    def __le__(self, other):
+    def __le__(self, other: object) -> csr_array:
         """Element-wise less than or equal comparison with a scalar value.
         This operates only on the existing non-zero elements of the matrix.
 
@@ -1017,9 +1063,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         >>> A = csr_array(...)
         >>> mask = A <= 0.5  # Returns boolean CSR array
         """
-        return self._compare_scalar(other, cupynumeric.less_equal)
+        return self._compare_scalar(other, cn.less_equal)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> csr_array:  # type: ignore [override]
         """Element-wise equality comparison with a scalar value.
         This operates only on the existing non-zero elements of the matrix.
 
@@ -1044,9 +1090,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         >>> A = csr_array(...)
         >>> mask = A == 0.5  # Returns boolean CSR array
         """
-        return self._compare_scalar(other, cupynumeric.equal)
+        return self._compare_scalar(other, cn.equal)
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> csr_array:  # type: ignore [override]
         """Element-wise not equal comparison with a scalar value.
         This operates only on the existing non-zero elements of the matrix.
 
@@ -1071,9 +1117,11 @@ class csr_array(CompressedBase, DenseSparseBase):
         >>> A = csr_array(...)
         >>> mask = A != 0.5  # Returns boolean CSR array
         """
-        return self._compare_scalar(other, cupynumeric.not_equal)
+        return self._compare_scalar(other, cn.not_equal)
 
-    def __setitem__(self, key, value):
+    def __setitem__(
+        self, key: csr_array | csr_matrix, value: Any
+    ) -> csr_array:
         """Set values in the matrix using a boolean CSR mask.
 
         Parameters
@@ -1118,7 +1166,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         assert key.shape == self.shape
         assert key.dtype == bool
 
-        value_store = runtime.legate_runtime.create_store_from_scalar(Scalar(value))
+        value_store = runtime.legate_runtime.create_store_from_scalar(
+            Scalar(value)
+        )
 
         # launch c++ task
         task = runtime.create_auto_task(SparseOpCode.CSR_INDEXING_CSR)
@@ -1144,7 +1194,76 @@ class csr_array(CompressedBase, DenseSparseBase):
 
         return self
 
-    def dot(self, other, out=None):
+    def __neg__(self) -> csr_array:
+        """Return -self (negation of all values)."""
+        return self._with_data(
+            -store_to_cupynumeric_array(self.vals), copy=True
+        )
+
+    # self - other
+    def __sub__(self, other) -> csr_array:
+        if is_scalar_like(other):
+            if other == 0:
+                return self.copy()
+            raise NotImplementedError(
+                "Subtraction of a scalar from a Legate Sparse array "
+                "will break sparsity and is not supported."
+                "Use the method data() to manipulate only the nonzeros."
+            )
+        elif is_sparse(other):
+            if other.shape != self.shape:
+                raise ValueError(
+                    "Inconsistent shapes: ({self.shape}, {other.shape})"
+                )
+            return geam(self, other, 1.0, -1.0, None)
+        elif is_dense(other):
+            return self.todense() - other
+
+        return NotImplemented
+
+    # other - self
+    def __rsub__(self, other: csr_array) -> csr_array:
+        if is_scalar_like(other):
+            if other == 0:
+                return -self.copy()
+            raise NotImplementedError(
+                "Subtraction of a scalar from a Legate Sparse array "
+                "will break sparsity and is not supported."
+                "Use the method data() to manipulate only the nonzeros."
+            )
+        elif is_dense(other):
+            return other - self.todense()
+
+        return NotImplemented
+
+    # self + other
+    def __add__(self, other):
+        if is_scalar_like(other):
+            if other == 0:
+                return self.copy()
+            raise NotImplementedError(
+                "Addition of a scalar to a Legate Sparse array "
+                "will break sparsity and is not supported."
+                "Use the method data() to manipulate only the nonzeros."
+            )
+        elif is_sparse(other):
+            if other.shape != self.shape:
+                raise ValueError(
+                    "Inconsistent shapes: ({self.shape}, {other.shape})"
+                )
+            return geam(self, other, 1.0, 1.0, None)
+        elif is_dense(other):
+            return self.todense() + other
+
+        return NotImplemented
+
+    # other + self
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def dot(
+        self, other: cn.ndarray | csr_array, out: cn.ndarray | None = None
+    ) -> cn.ndarray | csr_array:
         """Ordinary dot product.
 
         Parameters
@@ -1200,7 +1319,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         # If output specified - it should be cupynumeric array
         if out is not None:
-            assert isinstance(out, cupynumeric.ndarray)
+            assert isinstance(out, cn.ndarray)
 
         # only floating point operations are supported by cusparse at the moment
         if runtime.num_gpus > 0:
@@ -1214,10 +1333,12 @@ class csr_array(CompressedBase, DenseSparseBase):
                 raise NotImplementedError(msg)
 
         # If other.shape = (M,) then it's SpMV
-        if len(other.shape) == 1 or (len(other.shape) == 2 and other.shape[1] == 1):
+        if len(other.shape) == 1 or (
+            len(other.shape) == 2 and other.shape[1] == 1
+        ):
             # convert X to the cupynumeric array if needed
-            if not isinstance(other, cupynumeric.ndarray):
-                other = cupynumeric.array(other)
+            if not isinstance(other, cn.ndarray):
+                other = cn.array(other)
             assert self.shape[1] == other.shape[0]
             # for the case of X shape == (M, 1)
             other_originally_2d = False
@@ -1233,11 +1354,13 @@ class csr_array(CompressedBase, DenseSparseBase):
                     category=RuntimeWarning,
                     stacklevel=level,
                 )
-                other = cupynumeric.array(other)
+                other = cn.array(other)
 
             # Coerce A and x into a common type. Use that coerced type
             # to find the type of the output.
-            A, x = cast_to_common_type(self, other)
+            common_dtype = find_common_type(self, other)
+            A = self.astype(common_dtype, copy=False)
+            x = other.astype(common_dtype, copy=False)
             if out is None:
                 y = store_to_cupynumeric_array(
                     runtime.create_store(A.dtype, shape=(self.shape[0],))
@@ -1272,12 +1395,16 @@ class csr_array(CompressedBase, DenseSparseBase):
             if out is not None:
                 raise ValueError("Cannot provide out for CSRxCSR matmul.")
             assert self.shape[1] == other.shape[0]
-            return spgemm_csr_csr_csr(*cast_to_common_type(self, other))
+            common_dtype = find_common_type(self, other)
+            return spgemm_csr_csr_csr(
+                self.astype(common_dtype, copy=False),
+                other.astype(common_dtype, copy=False),
+            )
         else:
             raise NotImplementedError
 
     # Misc
-    def _getpos(self):
+    def _getpos(self) -> list[tuple[int, int]]:
         """Helper method to get row start and end positions.
 
         This internal method unpacks the compressed row storage format's position array
@@ -1295,7 +1422,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         row_end = store_to_cupynumeric_array(row_end_st)
         return [(i, j) for (i, j) in zip(row_start, row_end)]
 
-    def copy(self):
+    def copy(self) -> csr_array:
         """Returns a copy of this matrix.
 
         Returns
@@ -1305,7 +1432,7 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         return csr_array(self, dtype=self.dtype)
 
-    def conj(self, copy=True):
+    def conj(self, copy: bool = True) -> csr_array:
         """Element-wise complex conjugate.
 
         Parameters
@@ -1329,7 +1456,9 @@ class csr_array(CompressedBase, DenseSparseBase):
             get_store_from_cupynumeric_array(self.data.conj()), copy=False
         )
 
-    def transpose(self, axes=None, copy=False):
+    def transpose(
+        self, axes: Any | None = None, copy: bool = False
+    ) -> csr_array:
         """Reverses the dimensions of the sparse matrix.
 
         Parameters
@@ -1373,7 +1502,9 @@ class csr_array(CompressedBase, DenseSparseBase):
         task.execute()
 
         # sort
-        sort_mask = cupynumeric.argsort(self.crd, kind="stable")
+        sort_mask = cn.argsort(
+            store_to_cupynumeric_array(self.crd), kind="stable"
+        )
         new_rows = self.get_indices()[sort_mask]
         new_ci = store_to_cupynumeric_array(rows_expanded)[sort_mask]
         new_data = self.get_data()[sort_mask]
@@ -1388,7 +1519,7 @@ class csr_array(CompressedBase, DenseSparseBase):
 
     T = property(transpose, doc="Transpose of the matrix")
 
-    def asformat(self, format, copy=False):
+    def asformat(self, format: str | None, copy: bool = False) -> csr_array:
         """Convert this matrix to a specified format.
 
         Parameters
@@ -1417,7 +1548,16 @@ class csr_array(CompressedBase, DenseSparseBase):
         else:
             raise NotImplementedError("Only CSR format is supported right now")
 
-    def tocsr(self, copy=False):
+    # correct return type value on this subclass
+    def astype(
+        self,
+        dtype: npt.dtype[Any],
+        casting: CastingKind = "unsafe",
+        copy: bool = True,
+    ) -> csr_array:
+        return cast(csr_array, super().astype(dtype, casting, copy))
+
+    def tocsr(self, copy: bool = False) -> csr_array:
         """Convert this matrix to a CSR matrix.
 
         Parameters
@@ -1439,7 +1579,7 @@ class csr_array(CompressedBase, DenseSparseBase):
             return self.copy().tocsr(copy=False)
         return self
 
-    def nonzero(self):
+    def nonzero(self) -> tuple[cn.ndarray, cn.ndarray]:
         """Return the indices of the non-zero elements.
 
         Returns
@@ -1455,13 +1595,15 @@ class csr_array(CompressedBase, DenseSparseBase):
         """
         task = runtime.create_auto_task(SparseOpCode.EXPAND_POS_TO_COORDINATES)
 
-        row_indices = runtime.create_store(coord_ty, shape=self.crd.shape)
-        row_indices_part = task.add_output(row_indices)
+        row_indices_store = runtime.create_store(
+            coord_ty, shape=self.crd.shape
+        )
+        row_indices_part = task.add_output(row_indices_store)
         pos_part = task.add_input(self.pos)
         task.add_constraint(image(pos_part, row_indices_part))
         task.execute()
 
-        row_indices = store_to_cupynumeric_array(row_indices)
+        row_indices = store_to_cupynumeric_array(row_indices_store)
         col_indices = store_to_cupynumeric_array(self.crd)
         vals_array = store_to_cupynumeric_array(self.vals)
         mask = vals_array != 0.0
@@ -1474,7 +1616,7 @@ csr_matrix = csr_array
 
 
 # spmv computes y = A @ x.
-def spmv(A: csr_array, x: cupynumeric.ndarray, y: cupynumeric.ndarray):
+def spmv(A: csr_array, x: cn.ndarray, y: cn.ndarray) -> None:
     """Perform sparse matrix vector product y = A @ x.
 
     Parameters
@@ -1506,10 +1648,16 @@ def spmv(A: csr_array, x: cupynumeric.ndarray, y: cupynumeric.ndarray):
     x_var = task.add_input(x_store)
 
     task.add_constraint(align(y_var, pos_var))
-    task.add_constraint(image(pos_var, crd_var, hint=ImageComputationHint.FIRST_LAST))
-    task.add_constraint(image(pos_var, vals_var, hint=ImageComputationHint.FIRST_LAST))
+    task.add_constraint(
+        image(pos_var, crd_var, hint=ImageComputationHint.FIRST_LAST)
+    )
+    task.add_constraint(
+        image(pos_var, vals_var, hint=ImageComputationHint.FIRST_LAST)
+    )
     # exact or approximate image to X
-    task.add_constraint(image(crd_var, x_var, hint=ImageComputationHint.MIN_MAX))
+    task.add_constraint(
+        image(crd_var, x_var, hint=ImageComputationHint.MIN_MAX)
+    )
 
     task.execute()
 
@@ -1553,7 +1701,7 @@ def spgemm_csr_csr_csr(A: csr_array, B: csr_array) -> csr_array:
     if runtime.num_gpus > 0:
         # replacement for the ImagePartition functor to get dense image
         # for rows of B, run separate task for this
-        pos_rect = runtime.create_store(rect1, shape=(A.shape[0],))  # type: ignore
+        pos_rect = runtime.create_store(rect1, shape=(A.shape[0],))
         task = runtime.create_auto_task(SparseOpCode.FAST_IMAGE_RANGE)
         A_pos_part = task.add_input(A.pos)
         A_crd_part = task.add_input(A.crd)
@@ -1566,7 +1714,7 @@ def spgemm_csr_csr_csr(A: csr_array, B: csr_array) -> csr_array:
 
         task.execute()
 
-        pos = runtime.create_store(rect1, shape=(A.shape[0],))  # type: ignore
+        pos = runtime.create_store(rect1, shape=(A.shape[0],))
         crd = runtime.create_store(coord_ty, ndim=1)
         vals = runtime.create_store(A.dtype, ndim=1)
 
@@ -1605,7 +1753,9 @@ def spgemm_csr_csr_csr(A: csr_array, B: csr_array) -> csr_array:
         # Array class should provide this functionality
         task.add_constraint(align(A_pos_part, B_pos_image_part))
         task.add_constraint(
-            image(B_pos_image_part, B_pos_part, hint=ImageComputationHint.MIN_MAX)
+            image(
+                B_pos_image_part, B_pos_part, hint=ImageComputationHint.MIN_MAX
+            )
         )
 
         task.add_constraint(
@@ -1659,11 +1809,11 @@ def spgemm_csr_csr_csr(A: csr_array, B: csr_array) -> csr_array:
 
         task.execute()
 
-        pos, nnz = CompressedBase.nnz_to_pos_cls(q_nnz)
+        pos, nnz_value = CompressedBase.nnz_to_pos_cls(q_nnz)
         # Block and convert the nnz future into an int.
-        nnz = int(nnz)
-        crd = runtime.create_store(coord_ty, shape=(nnz,))
-        vals = runtime.create_store(A.dtype, shape=(nnz,))
+        nnz = int(nnz_value)
+        crd = runtime.create_store(coord_ty, shape=Shape((nnz,)))
+        vals = runtime.create_store(A.dtype, shape=Shape((nnz,)))
 
         task = runtime.create_auto_task(SparseOpCode.SPGEMM_CSR_CSR_CSR)
         C_pos_part_out = task.add_output(pos)
@@ -1692,7 +1842,124 @@ def spgemm_csr_csr_csr(A: csr_array, B: csr_array) -> csr_array:
         task.add_constraint(image(B_pos_part, B_vals_part))
 
         task.execute()
+        return csr_array((vals, crd, pos), shape=(A.shape[0], B.shape[1]))
+
+
+def geam(A: csr_array, B: csr_array, alpha: Any, beta: Any, C=None):
+    """Compute C = alpha * A + beta * B for CSR matrices.
+
+    Parameters
+    ----------
+    A : csr_array
+        First input sparse matrix.
+    B : csr_array
+        Second input sparse matrix. Must have same shape as A.
+    alpha : scalar-like
+        Scalar multiplier for A. Will be cast to A.dtype.
+    beta : scalar-like
+        Scalar multiplier for B. Will be cast to A.dtype.
+    C : csr_array, optional
+        Output sparse matrix. If provided, must have the correct sparsity
+        pattern to hold the result. If None, a new matrix is allocated.
+
+    Returns
+    -------
+    csr_array
+        The result C = alpha * A + beta * B.
+
+    Notes
+    -----
+    If C is provided, it is the user's responsibility to ensure the sparsity
+    pattern matches the result. Behavior is undefined otherwise.
+
+    alpha and beta may be integers, floats, or complex values. They are
+    converted to A.dtype before computation. For complex inputs, A.dtype
+    should be a complex dtype to preserve the imaginary component.
+    """
+
+    if C is None:
+        perform_symbolic_phase = True
+    else:
+        # If C is provided, assume it has the correct sparsity pattern
+        assert isinstance(C, csr_array), "C must be a Legate Sparse CSR array"
+        perform_symbolic_phase = False
+
+    # Symbolic phase: compute the sparsity pattern of the result
+    if perform_symbolic_phase:
+        nnz_per_row = runtime.create_store(nnz_ty, A.pos.shape)
+        task = runtime.create_auto_task(SparseOpCode.GEAM_CSR_CSR_SYMBOLIC)
+        A_pos_part = task.add_input(A.pos)
+        A_crd_part = task.add_input(A.crd)
+        B_pos_part = task.add_input(B.pos)
+        B_crd_part = task.add_input(B.crd)
+        nnz_per_row_part = task.add_output(nnz_per_row)
+
+        task.add_constraint(image(A_pos_part, A_crd_part))
+        task.add_constraint(image(B_pos_part, B_crd_part))
+        task.add_constraint(align(A_pos_part, B_pos_part))
+        task.add_constraint(align(A_pos_part, nnz_per_row_part))
+
+        task.execute()
+
+        # Compute C_pos from nnz_per_row using the helper from CompressedBase
+        C_pos, nnz_scalar = CompressedBase.nnz_to_pos_cls(nnz_per_row)
+        nnz_total = int(nnz_scalar)
+
+    # Allocate output arrays if needed
+    if perform_symbolic_phase:
+        C_vals = runtime.create_store(A.dtype, shape=(nnz_total,))
+        C_crd = runtime.create_store(coord_ty, shape=(nnz_total,))
+    else:
+        C_vals = C.vals
+        C_crd = C.crd
+        C_pos = C.pos
+
+    # Create scalar stores for alpha and beta
+    alpha_store = runtime.legate_runtime.create_store_from_scalar(
+        Scalar(A.dtype.type(alpha))
+    )
+    beta_store = runtime.legate_runtime.create_store_from_scalar(
+        Scalar(A.dtype.type(beta))
+    )
+
+    # Compute phase: C = alpha * A + beta * B
+    task = runtime.create_auto_task(SparseOpCode.GEAM_CSR_CSR_COMPUTE)
+
+    # Inputs (order must match C++ template expectations)
+    A_pos_part = task.add_input(A.pos)
+    A_crd_part = task.add_input(A.crd)
+    A_vals_part = task.add_input(A.vals)
+    B_pos_part = task.add_input(B.pos)
+    B_crd_part = task.add_input(B.crd)
+    B_vals_part = task.add_input(B.vals)
+
+    # C_pos is an INPUT (already computed in symbolic phase)
+    C_pos_part = task.add_input(C_pos)
+
+    # C_crd and C_vals are outputs
+    C_crd_part = task.add_output(C_crd)
+    C_vals_part = task.add_output(C_vals)
+
+    # Scalar inputs (alpha and beta)
+    task.add_input(alpha_store)
+    task.add_input(beta_store)
+
+    # Align row partitions: A, B, C all partitioned by the same rows
+    task.add_constraint(align(A_pos_part, B_pos_part))
+    task.add_constraint(align(A_pos_part, C_pos_part))
+
+    # Image constraints: crd and vals are partitioned via pos
+    task.add_constraint(image(A_pos_part, A_crd_part))
+    task.add_constraint(image(A_pos_part, A_vals_part))
+    task.add_constraint(image(B_pos_part, B_crd_part))
+    task.add_constraint(image(B_pos_part, B_vals_part))
+    task.add_constraint(image(C_pos_part, C_crd_part))
+    task.add_constraint(image(C_pos_part, C_vals_part))
+
+    task.execute()
+
+    if perform_symbolic_phase:
         return csr_array(
-            (vals, crd, pos),
-            shape=Shape((A.shape[0], B.shape[1])),
+            (C_vals, C_crd, C_pos), shape=A.shape, dtype=A.dtype, copy=False
         )
+    return C

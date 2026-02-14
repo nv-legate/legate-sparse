@@ -21,27 +21,27 @@ limitations under the License.
 Legate Sparse is a [Legate](https://github.com/nv-legate/legate) library
 that aims to provide a distributed and accelerated drop-in replacement for the
 [scipy.sparse](https://docs.scipy.org/doc/scipy/reference/sparse.html) library
-on top of the [Legate](https://github.com/nv-legate/legate) runtime. 
-Legate Sparse interoperates with 
+on top of the [Legate](https://github.com/nv-legate/legate) runtime.
+Legate Sparse interoperates with
 [cuPyNumeric](https://github.com/nv-legate/cupynumeric),
-a distributed and accelerated drop-in replacement 
+a distributed and accelerated drop-in replacement
 for [NumPy](https://numpy.org/doc/stable/reference/index.html#reference), to
 enable writing programs that operate on distributed dense and sparse arrays.
-Take a look at the `examples` directory for some applications that can 
+Take a look at the `examples` directory for some applications that can
 use Legate Sparse. We have implemented
 an explicit partial-differential equation (PDE) [solver](examples/pde.py).
 More complex and interesting applications are on the way -- stay tuned!
 
-Legate Sparse is currently in alpha and supports a subset of APIs 
-and options from scipy.sparse, so if you need an API, please open 
-an issue and give us a summary of its usage. 
+Legate Sparse is currently in alpha and supports a subset of APIs
+and options from scipy.sparse, so if you need an API, please open
+an issue and give us a summary of its usage.
 
 # Installation
 
-To use Legate Sparse, `legate` and `cupynumeric` libraries have to be installed. 
-They can be installed either by pulling the respective conda packages 
-or by manually building from source. For more information, 
-see build instructions for [Legate](https://github.com/nv-legate/legate) 
+To use Legate Sparse, `legate` and `cupynumeric` libraries have to be installed.
+They can be installed either by pulling the respective conda packages
+or by manually building from source. For more information,
+see build instructions for [Legate](https://github.com/nv-legate/legate)
 and [cuPyNumeric](https://github.com/nv-legate/cupynumeric).
 
 Follow the steps in this section.
@@ -51,7 +51,7 @@ Follow the steps in this section.
 The `legate-sparse` conda package already depends on `legate` and `cupynumeric`,
 and it will install these dependencies automatically.
 
-To create a new environment and install: 
+To create a new environment and install:
 ```
 conda create -n myenv -c legate -c conda-forge legate-sparse
 ```
@@ -65,9 +65,9 @@ conda install -c legate -c conda-forge legate-sparse
 
 To write programs using Legate Sparse, import the `legate_sparse` module, which
 contains methods and types found in `scipy.sparse`. Note that the module is imported as `legate_sparse`
-and not `legate.sparse`. Here is an example program saved as `main.py`. 
+and not `legate.sparse`. Here is an example program saved as `main.py`.
 
-For more details on how to run legate programs, check 
+For more details on how to run legate programs, check
 our [documentation](https://docs.nvidia.com/cupynumeric).
 To run the application on a single GPU, use this command:
 
@@ -79,10 +79,10 @@ import legate_sparse as sparse
 import cupynumeric as np
 
 # number of diagonals in the matrix (including main diagonal)
-n_diagonals = 3 
+n_diagonals = 3
 
 # number of rows in the matrix
-nrows = 5 
+nrows = 5
 
 # generate two tridiaonal matrices (n_diagonals=3) and multiply them
 A = sparse.diags(
@@ -102,13 +102,13 @@ B = sparse.diags(
 )
 
 # spGEMM operation: multiplication of two sparse matrices
-C = A @ B 
+C = A @ B
 print(C.todense())
 print()
 
 # spMV operation: multiplication of a sparse matrix and a dense vector
 x = np.ones(nrows)
-C = A @ x 
+C = A @ x
 print(C)
 
 assert np.array_equal(A.todense().sum(axis=1), C)

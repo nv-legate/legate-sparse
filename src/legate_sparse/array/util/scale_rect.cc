@@ -23,6 +23,9 @@ using namespace legate;
 
 template <>
 struct ScaleRect1ImplBody<VariantKind::CPU> {
+  TaskContext context;
+  explicit ScaleRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorRW<Rect<1>, 1>& output, const int64_t scale, const Rect<1>& rect)
   {
     for (coord_t i = rect.lo[0]; i < rect.hi[0] + 1; i++) {

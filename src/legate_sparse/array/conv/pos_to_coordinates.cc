@@ -23,6 +23,9 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE>
 struct ExpandPosToCoordinatesImplBody<VariantKind::CPU, INDEX_CODE> {
+  TaskContext context;
+  explicit ExpandPosToCoordinatesImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorRO<Rect<1>, 1>& pos,

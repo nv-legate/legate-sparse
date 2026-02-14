@@ -48,6 +48,9 @@ __global__ void CSRtoDenseKernel(size_t rows,
 
 template <>
 struct CSRToDenseImpl<VariantKind::GPU> {
+  TaskContext context;
+  explicit CSRToDenseImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(CSRToDenseArgs& args) const
   {
@@ -64,7 +67,7 @@ struct CSRToDenseImpl<VariantKind::GPU> {
       return;
     }
 
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
 
     auto B_domain = B_pos.domain();
     auto rows     = B_domain.hi()[0] - B_domain.lo()[0] + 1;

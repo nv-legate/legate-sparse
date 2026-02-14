@@ -29,13 +29,16 @@ struct ScaleRect1ImplBody;
 
 template <VariantKind KIND>
 struct ScaleRect1Impl {
+  TaskContext context;
+  explicit ScaleRect1Impl(TaskContext context) : context(context) {}
+
   void operator()(ScaleRect1Args& args) const
   {
     auto output = args.out.read_write_accessor<Rect<1>, 1>();
     if (args.out.domain().empty()) {
       return;
     }
-    ScaleRect1ImplBody<KIND>()(output, args.scale, args.out.shape<1>());
+    ScaleRect1ImplBody<KIND>{context}(output, args.scale, args.out.shape<1>());
   }
 };
 
@@ -45,7 +48,7 @@ static void scale_rect_1_template(TaskContext context)
   auto task  = context.task_;
   auto scale = task->futures[0].get_result<int64_t>();
   ScaleRect1Args args{context.outputs()[0], scale};
-  ScaleRect1Impl<KIND>{}(args);
+  ScaleRect1Impl<KIND>{context}(args);
 }
 
 }  // namespace sparse

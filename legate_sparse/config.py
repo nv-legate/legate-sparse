@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import platform
@@ -29,6 +30,10 @@ class _LegateSparseSharedLib:
     implements the core sparse matrix operations.
     """
 
+    LEGATE_SPARSE_LOAD_CUDALIBS: int
+    LEGATE_SPARSE_UNLOAD_CUDALIBS: int
+
+    LEGATE_SPARSE_CSR_TO_DENSE: int
     LEGATE_SPARSE_DENSE_TO_CSR: int
     LEGATE_SPARSE_DENSE_TO_CSR_NNZ: int
     LEGATE_SPARSE_ZIP_TO_RECT_1: int
@@ -49,6 +54,9 @@ class _LegateSparseSharedLib:
     LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR: int
     LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_GPU: int
     LEGATE_SPARSE_AXPBY: int
+    LEGATE_SPARSE_SPSOLVE: int
+    LEGATE_SPARSE_GEAM_CSR_CSR_SYMBOLIC: int
+    LEGATE_SPARSE_GEAM_CSR_CSR_COMPUTE: int
 
 
 def dlopen_no_autoclose(ffi: Any, lib_path: str) -> Any:
@@ -88,7 +96,7 @@ class LegateSparseLib:
     library with the Legate runtime.
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         """Initialize the Legate sparse library.
 
         Parameters
@@ -98,9 +106,6 @@ class LegateSparseLib:
         """
         self.name = name
         self.runtime = None
-        self.shared_object = None
-
-        self.name = name
 
         shared_lib_path = self.get_shared_library()
         assert shared_lib_path is not None
@@ -118,7 +123,9 @@ class LegateSparseLib:
 
     def register(self) -> None:
         """Register the library with the Legate runtime."""
-        callback = getattr(self.shared_object, "legate_sparse_perform_registration")
+        callback = getattr(
+            self.shared_object, "legate_sparse_perform_registration"
+        )
         callback()
 
     def get_shared_library(self) -> str:
@@ -131,7 +138,9 @@ class LegateSparseLib:
         """
         from legate_sparse.install_info import libpath
 
-        return os.path.join(libpath, "liblegate_sparse" + self.get_library_extension())
+        return os.path.join(
+            libpath, "liblegate_sparse" + self.get_library_extension()
+        )
 
     def get_legate_library(self) -> Library:
         """Get the Legate library object.
@@ -181,7 +190,14 @@ SPARSE_LIB_NAME = "legate.sparse"
 """Name of the Legate sparse library."""
 
 sparse_lib = LegateSparseLib(SPARSE_LIB_NAME)
-sparse_lib.register()
+
+# Guard against double registration (can happen during Sphinx documentation builds)
+try:
+    sparse_lib.register()
+except Exception:
+    # Library may already be registered from a previous import
+    pass
+
 _sparse = sparse_lib.shared_object
 # has to be called after register()
 _library = sparse_lib.get_legate_library()
@@ -224,6 +240,10 @@ class SparseOpCode(IntEnum):
     SPGEMM_CSR_CSR_CSR_NNZ = _sparse.LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_NNZ
     SPGEMM_CSR_CSR_CSR = _sparse.LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR
     SPGEMM_CSR_CSR_CSR_GPU = _sparse.LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_GPU
+
+    SPSOLVE = _sparse.LEGATE_SPARSE_SPSOLVE
+    GEAM_CSR_CSR_SYMBOLIC = _sparse.LEGATE_SPARSE_GEAM_CSR_CSR_SYMBOLIC
+    GEAM_CSR_CSR_COMPUTE = _sparse.LEGATE_SPARSE_GEAM_CSR_CSR_COMPUTE
 
 
 # Register some types for us to use.

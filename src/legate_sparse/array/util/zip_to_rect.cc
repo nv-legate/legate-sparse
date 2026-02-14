@@ -23,6 +23,9 @@ using namespace legate;
 
 template <typename VAL>
 struct ZipToRect1ImplBody<VariantKind::CPU, VAL> {
+  TaskContext context;
+  explicit ZipToRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorWO<Rect<1>, 1>& output,
                   const AccessorRO<VAL, 1>& lo,
                   const AccessorRO<VAL, 1>& hi,

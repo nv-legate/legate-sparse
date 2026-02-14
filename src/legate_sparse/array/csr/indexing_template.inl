@@ -28,6 +28,9 @@ struct CSRIndexingCSRImplBody;
 
 template <VariantKind KIND>
 struct CSRIndexingCSRImpl {
+  TaskContext context;
+  explicit CSRIndexingCSRImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(const CSRIndexingCSRArgs& args)
   {
@@ -44,7 +47,7 @@ struct CSRIndexingCSRImpl {
     auto value = args.value.read_accessor<VAL_TY, 1>();
 
     // TODO: Rect is based on A_pos.shape, is that correct?
-    CSRIndexingCSRImplBody<KIND, INDEX_CODE, VAL_CODE>()(
+    CSRIndexingCSRImplBody<KIND, INDEX_CODE, VAL_CODE>{context}(
       A_pos, A_crd, A_vals, key_pos, key_crd, value, args.A_pos.shape<1>());
   }
 };
@@ -62,7 +65,7 @@ static void csr_indexing_csr_template(TaskContext context)
   };
 
   index_type_value_type_dispatch(
-    args.A_crd.code(), args.A_vals.code(), CSRIndexingCSRImpl<KIND>(), args);
+    args.A_crd.code(), args.A_vals.code(), CSRIndexingCSRImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

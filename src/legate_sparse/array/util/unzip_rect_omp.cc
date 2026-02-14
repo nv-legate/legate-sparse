@@ -23,6 +23,9 @@ using namespace legate;
 
 template <>
 struct UnZipRect1ImplBody<VariantKind::OMP> {
+  TaskContext context;
+  explicit UnZipRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorWO<int64_t, 1>& out1,
                   const AccessorWO<int64_t, 1>& out2,
                   const AccessorRO<Rect<1>, 1>& in,

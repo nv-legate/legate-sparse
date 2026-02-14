@@ -16,11 +16,11 @@ import sys
 
 import cupynumeric as np
 import pytest
-from legate_sparse.runtime import runtime
 from utils.banded_matrix import banded_matrix
 from utils.sample import simple_system_gen
 
 import legate_sparse as sparse
+from legate_sparse.runtime import runtime
 
 
 @pytest.mark.parametrize("N", [5, 29])

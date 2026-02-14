@@ -11,26 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import math
 import traceback
-from typing import Any
+from typing import TYPE_CHECKING, cast
 
-import cupynumeric
-import numpy
+import cupynumeric as cn
+import numpy as np
 from legate.core import LogicalStore
 
 import legate_sparse
 
 from .runtime import runtime
 
+if TYPE_CHECKING:
+    from typing import Any
+
+    import numpy.typing as npt
+
+    from .csr import csr_array
+
 # Datatypes that spmv and spgemm operations are supported for
-SUPPORTED_DATATYPES = (
-    numpy.float32,
-    numpy.float64,
-    numpy.complex64,
-    numpy.complex128,
-)
+SUPPORTED_DATATYPES = (np.float32, np.float64, np.complex64, np.complex128)
 """Supported datatypes for sparse matrix operations (SpMV and SpGEMM)."""
 
 
@@ -59,7 +62,7 @@ def find_last_user_stacklevel() -> int:
 
 
 # store_to_cupynumeric_array converts a store to a cuPyNumeric array.
-def store_to_cupynumeric_array(store: LogicalStore):
+def store_to_cupynumeric_array(store: LogicalStore) -> cn.ndarray:
     """Convert a LogicalStore to a cupynumeric array.
 
     Parameters
@@ -72,13 +75,12 @@ def store_to_cupynumeric_array(store: LogicalStore):
     cupynumeric.ndarray
         The cupynumeric array representation of the store.
     """
-    return cupynumeric.asarray(store)
+    return cn.asarray(store)
 
 
 # get_store_from_cupynumeric_array extracts a store from a cuPyNumeric array.
 def get_store_from_cupynumeric_array(
-    arr: cupynumeric.ndarray,
-    copy=False,
+    arr: cn.ndarray, copy: bool = False
 ) -> LogicalStore:
     """Extract a LogicalStore from a cupynumeric array.
 
@@ -96,17 +98,17 @@ def get_store_from_cupynumeric_array(
     """
     if copy:
         # If requested to make a copy, do so.
-        arr = cupynumeric.array(arr)
+        arr = cn.array(arr)
 
     data = arr.__legate_data_interface__["data"]
     array = data[next(iter(data))]
     store = array.data
 
-    return store
+    return cast(LogicalStore, store)
 
 
 # cast_to_store attempts to cast an arbitrary object into a store.
-def cast_to_store(arr):
+def cast_to_store(arr: cn.ndarray | LogicalStore) -> LogicalStore:
     """Cast an arbitrary object to a LogicalStore.
 
     Parameters
@@ -126,16 +128,18 @@ def cast_to_store(arr):
     """
     if isinstance(arr, LogicalStore):
         return arr
-    if isinstance(arr, numpy.ndarray):
-        arr = cupynumeric.array(arr)
-    if isinstance(arr, cupynumeric.ndarray):
+    if isinstance(arr, np.ndarray):
+        arr = cn.array(arr)
+    if isinstance(arr, cn.ndarray):
         return get_store_from_cupynumeric_array(arr)
     raise NotImplementedError
 
 
 # cast_arr attempts to cast an arbitrary object into a cupynumeric
 # ndarray, with an optional desired type.
-def cast_arr(arr, dtype=None):
+def cast_arr(
+    arr: cn.ndarray | LogicalStore, dtype: npt.dtype[Any] | None = None
+) -> cn.ndarray:
     """Cast an arbitrary object to a cupynumeric array.
 
     Parameters
@@ -152,14 +156,16 @@ def cast_arr(arr, dtype=None):
     """
     if isinstance(arr, LogicalStore):
         arr = store_to_cupynumeric_array(arr)
-    elif not isinstance(arr, cupynumeric.ndarray):
-        arr = cupynumeric.array(arr)
+    elif not isinstance(arr, cn.ndarray):
+        arr = cn.array(arr)
     if dtype is not None:
         arr = arr.astype(dtype)
     return arr
 
 
-def find_common_type(*args):
+def find_common_type(
+    *args: cn.ndarray | csr_array | np.ndarray,
+) -> npt.dtype[Any]:
     """Find the common data type for a set of arrays.
 
     This function performs a similar analysis to cupynumeric.ndarray.find_common_type
@@ -190,33 +196,10 @@ def find_common_type(*args):
             scalar_types.append(array.dtype)
         else:
             array_types.append(array.dtype)
-    return numpy.result_type(*array_types, *scalar_types)
+    return np.result_type(*array_types, *scalar_types)
 
 
-def cast_to_common_type(*args):
-    """Cast all arguments to the same common data type.
-
-    Parameters
-    ----------
-    *args : array_like
-        Arrays to cast to a common type.
-
-    Returns
-    -------
-    tuple
-        Tuple of arrays, all cast to the same common data type.
-
-    Notes
-    -----
-    This function first finds the common type using find_common_type,
-    then casts each input to that type. If all arguments are already
-    the common type, this will be a no-op.
-    """
-    common_type = find_common_type(*args)
-    return tuple(arg.astype(common_type, copy=False) for arg in args)
-
-
-def factor_int(n):
+def factor_int(n: int) -> tuple[int, int]:
     """Split an integer into two close factors.
 
     Parameters
@@ -242,7 +225,9 @@ def factor_int(n):
     return val, val2
 
 
-def broadcast_store(store: LogicalStore, shape: Any) -> LogicalStore:
+def broadcast_store(
+    store: LogicalStore, shape: tuple[int, ...]
+) -> LogicalStore:
     """Broadcast a LogicalStore to the desired shape.
 
     Parameters
@@ -294,12 +279,14 @@ def copy_store(store: LogicalStore) -> LogicalStore:
     LogicalStore
         A new LogicalStore with the same data as the input.
     """
-    res = runtime.create_store(store.type, store.shape)  # type: ignore
+    res = runtime.create_store(store.type, store.shape)
     runtime.legate_runtime.issue_copy(res, store)
     return res
 
 
-def store_from_store_or_array(src, copy=False) -> LogicalStore:  # type: ignore
+def store_from_store_or_array(
+    src: LogicalStore | cn.ndarray, copy: bool = False
+) -> LogicalStore:
     """Get LogicalStore from a LogicalStore or array, potentially creating a copy.
 
     Parameters
@@ -319,15 +306,19 @@ def store_from_store_or_array(src, copy=False) -> LogicalStore:  # type: ignore
     AssertionError
         If the input type is not supported.
     """
-    if isinstance(src, cupynumeric.ndarray):
+    if isinstance(src, cn.ndarray):
         return get_store_from_cupynumeric_array(src, copy)
     elif isinstance(src, LogicalStore):
         return copy_store(src) if copy else src
     else:
-        AssertionError("Wrong type for 'store_from_store_or_array()' utility")
+        raise AssertionError(
+            "Wrong type for 'store_from_store_or_array()' utility"
+        )
 
 
-def array_from_store_or_array(src, copy=False) -> cupynumeric.ndarray:  # type: ignore
+def array_from_store_or_array(
+    src: LogicalStore | cn.ndarray, copy: bool = False
+) -> cn.ndarray:
     """Get array from a LogicalStore or array, potentially creating a copy.
 
     Parameters
@@ -347,7 +338,7 @@ def array_from_store_or_array(src, copy=False) -> cupynumeric.ndarray:  # type: 
     AssertionError
         If the input type is not supported.
     """
-    if isinstance(src, cupynumeric.ndarray):
+    if isinstance(src, cn.ndarray):
         return src.copy() if copy else src
     elif isinstance(src, LogicalStore):
         return (
@@ -356,11 +347,12 @@ def array_from_store_or_array(src, copy=False) -> cupynumeric.ndarray:  # type: 
             else store_to_cupynumeric_array(src)
         )
     else:
-        AssertionError("Wrong type for 'array_from_store_or_array()' utility")
-    # type: ignore
+        raise AssertionError(
+            "Wrong type for 'array_from_store_or_array()' utility"
+        )
 
 
-def get_storage_type(src):
+def get_storage_type(src: LogicalStore | cn.ndarray) -> npt.dtype[Any]:
     """Get the storage type of an object.
 
     Parameters
@@ -378,18 +370,17 @@ def get_storage_type(src):
     AssertionError
         If the input type is not supported.
     """
-    if isinstance(src, cupynumeric.ndarray):
+    if isinstance(src, cn.ndarray):
         return src.dtype
     elif isinstance(src, LogicalStore):
         # there is legate.core to_core_dtype(), but here we need the opposite
         # doing via array now
         return cast_arr(src).dtype
     else:
-        AssertionError("Wrong type for 'get_storage_type()' utility")
-    # type: ignore
+        raise AssertionError("Wrong type for 'get_storage_type()' utility")
 
 
-def is_dtype_supported(dtype: numpy.dtype) -> bool:
+def is_dtype_supported(dtype: npt.dtype[Any]) -> bool:
     """Check if a datatype supports SpMV and SpGEMM operations.
 
     Parameters
@@ -409,7 +400,7 @@ def is_dtype_supported(dtype: numpy.dtype) -> bool:
     return dtype in SUPPORTED_DATATYPES
 
 
-def is_dense(x) -> bool:
+def is_dense(x: Any) -> bool:
     """Check if an object is a dense cupynumeric array.
 
     Parameters
@@ -422,10 +413,10 @@ def is_dense(x) -> bool:
     bool
         True if x is a cupynumeric.ndarray, False otherwise.
     """
-    return isinstance(x, cupynumeric.ndarray)
+    return isinstance(x, cn.ndarray)
 
 
-def is_scalar_like(x) -> bool:
+def is_scalar_like(x: Any) -> bool:
     """Check if an object is a scalar-like type.
 
     Parameters
@@ -445,10 +436,10 @@ def is_scalar_like(x) -> bool:
     """
     if isinstance(x, str):
         return False
-    return cupynumeric.isscalar(x) or (is_dense(x) and x.ndim == 0)
+    return cn.isscalar(x) or (is_dense(x) and x.ndim == 0)
 
 
-def is_sparse(x) -> bool:
+def is_sparse(x: Any) -> bool:
     """Check if an object is a legate sparse matrix.
 
     Parameters
@@ -464,7 +455,7 @@ def is_sparse(x) -> bool:
     return legate_sparse.isspmatrix(x)
 
 
-def sort_by_rows_then_cols(rows: cupynumeric.ndarray, cols: cupynumeric.ndarray):
+def sort_by_rows_then_cols(rows: cn.ndarray, cols: cn.ndarray) -> cn.ndarray:
     """Sort indices by rows first, then by columns.
 
     This function is a quick and dirty hack that does what np.lexsort does
@@ -501,7 +492,7 @@ def sort_by_rows_then_cols(rows: cupynumeric.ndarray, cols: cupynumeric.ndarray)
     # note that the lexsort reverses the order of key,
     # so this would be equivalent to np.lexsort((cols, rows))
 
-    indices = cupynumeric.argsort(cols, kind="stable")
-    order = cupynumeric.argsort(rows[indices], kind="stable")
+    indices = cn.argsort(cols, kind="stable")
+    order = cn.argsort(rows[indices], kind="stable")
 
     return indices[order]

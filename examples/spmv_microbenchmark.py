@@ -34,13 +34,27 @@ Command line arguments:
 --package: Backend to use (legate, cupy, scipy)
 """
 
-import argparse
+from __future__ import annotations
 
-from common import banded_matrix, get_arg_number, get_phase_procs, parse_common_args
+import argparse
+from typing import TYPE_CHECKING, Any
+
+from common import (
+    Timer,
+    banded_matrix,
+    get_arg_number,
+    get_phase_procs,
+    parse_common_args,
+)
+
+if TYPE_CHECKING:
+    from legate_sparse import csr_array
 
 
 # Writing to pre-allocated array is preferred
-def spmv_dispatch(A, x, y, i, repartition):
+def spmv_dispatch(
+    A: csr_array, x: Any, y: Any, i: int, repartition: bool
+) -> None:
     """Dispatch sparse matrix-vector multiplication operation.
 
     Parameters
@@ -77,7 +91,9 @@ def spmv_dispatch(A, x, y, i, repartition):
             y = A @ x
 
 
-def run_spmv(A, iters, repartition, timer):
+def run_spmv(
+    A: csr_array, iters: int, repartition: bool, timer: Timer
+) -> None:
     """Run sparse matrix-vector multiplication benchmark.
 
     Parameters
@@ -105,9 +121,9 @@ def run_spmv(A, iters, repartition, timer):
     x = np.ones((A.shape[1],))
     y = np.zeros((A.shape[0],))
 
-    assert not repartition or (
-        A.shape[0] == A.shape[1]
-    ), "Matrix should be square for switching x and y"
+    assert not repartition or (A.shape[0] == A.shape[1]), (
+        "Matrix should be square for switching x and y"
+    )
 
     # Warm up runs
     warmup_iters = 5
@@ -186,7 +202,7 @@ if __name__ == "__main__":
     )
 
     args, _ = parser.parse_known_args()
-    _, timer, np, sparse, linalg, use_legate = parse_common_args()
+    package, timer, np, sparse, linalg, use_legate = parse_common_args()
 
     init_procs, bench_procs = get_phase_procs(use_legate)
 

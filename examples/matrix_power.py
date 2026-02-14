@@ -32,11 +32,17 @@ Command line arguments:
 --package: Backend to use (legate, cupy, scipy)
 """
 
+from __future__ import annotations
+
 import argparse
 from functools import reduce
+from typing import TYPE_CHECKING
 
-import numpy.typing as npt
-from common import get_arg_number, parse_common_args
+from common import Timer, get_arg_number, parse_common_args
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    from legate_sparse import csr_array
 
 # global states random_seed, rng
 global random_seed, rng
@@ -46,7 +52,9 @@ global random_seed, rng
 # ----------------------------
 
 
-def create_csr_with_nnz_per_row(nrows, nnz_per_row: int, dtype: npt.DTypeLike = None):
+def create_csr_with_nnz_per_row(
+    nrows: int, nnz_per_row: int, dtype: npt.DTypeLike | None = None
+) -> csr_array:
     """Create a CSR matrix with a prescribed number of nonzeros in each row.
 
     Parameters
@@ -84,7 +92,9 @@ def create_csr_with_nnz_per_row(nrows, nnz_per_row: int, dtype: npt.DTypeLike = 
     return matrix
 
 
-def create_csr_with_nnz_total(nrows, nnz_total, dtype: npt.DTypeLike = None):
+def create_csr_with_nnz_total(
+    nrows: int, nnz_total: int, dtype: npt.DTypeLike | None = None
+) -> csr_array:
     """Create a CSR matrix with a prescribed total number of nonzeros.
 
     Parameters
@@ -113,7 +123,9 @@ def create_csr_with_nnz_total(nrows, nnz_total, dtype: npt.DTypeLike = None):
     coo_rows = rng.integers(0, nrows, nnz_total)
     coo_cols = rng.integers(0, ncols, nnz_total)
     vals = np.ones(nnz_total, dtype=dtype)
-    matrix = sparse.csr_matrix((vals, (coo_rows, coo_cols)), shape=(nrows, ncols))
+    matrix = sparse.csr_matrix(
+        (vals, (coo_rows, coo_cols)), shape=(nrows, ncols)
+    )
 
     return matrix
 
@@ -123,7 +135,9 @@ def create_csr_with_nnz_total(nrows, nnz_total, dtype: npt.DTypeLike = None):
 # ------------------------
 
 
-def compute_A_power_k(A, timer, nwarmups: int = 2, k: int = 4):
+def compute_A_power_k(
+    A: csr_array, timer: Timer, nwarmups: int = 2, k: int = 4
+) -> None:
     """Compute A^k and measure performance.
 
     Parameters
@@ -180,7 +194,9 @@ def compute_A_power_k(A, timer, nwarmups: int = 2, k: int = 4):
         print(
             f"Elapsed time for spgemm for hop {hop} (ms) : {elapsed_time_spgemm[hop]}"
         )
-        print(f"Elapsed time for copy   for hop {hop} (ms) : {elapsed_time_copy[hop]}")
+        print(
+            f"Elapsed time for copy   for hop {hop} (ms) : {elapsed_time_copy[hop]}"
+        )
 
 
 if __name__ == "__main__":
@@ -243,13 +259,11 @@ if __name__ == "__main__":
     )
 
     args, _ = parser.parse_known_args()
-    _, timer, np, sparse, linalg, use_legate = parse_common_args()
+    package, timer, np, sparse, linalg, use_legate = parse_common_args()
 
     nrows = get_arg_number(args.nrows)
     nnz_total = get_arg_number(args.nnz_total)
 
-    # this is a global variable
-    global random_seed, rng
     random_seed = args.random_seed
 
     if args.same_sparsity_for_cpu_and_gpu:
@@ -277,4 +291,6 @@ if __name__ == "__main__":
 
     compute_A_power_k(A, timer, int(args.nwarmups), int(args.k))
 
-    print(f"Elapsed time in matrix creation (ms)   : {elapsed_time_matrix_gen}")
+    print(
+        f"Elapsed time in matrix creation (ms)   : {elapsed_time_matrix_gen}"
+    )

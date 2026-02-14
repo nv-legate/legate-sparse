@@ -22,11 +22,17 @@ import legate_sparse as sparse
 
 def test_csr_to_dense():
     row_offsets = np.array([0, 2, 5, 7, 9, 11, 14], dtype=np.int64)
-    csr_vals = np.array([2, 1, 5, 8, 2, 3, 4, 6, 1, 9, 4, 7, 2, 1], dtype=np.float64)
-    col_indices = np.array([0, 4, 0, 1, 5, 2, 3, 1, 3, 0, 4, 0, 4, 5], dtype=np.int64)
+    csr_vals = np.array(
+        [2, 1, 5, 8, 2, 3, 4, 6, 1, 9, 4, 7, 2, 1], dtype=np.float64
+    )
+    col_indices = np.array(
+        [0, 4, 0, 1, 5, 2, 3, 1, 3, 0, 4, 0, 4, 5], dtype=np.int64
+    )
     matrix_shape = (6, 6)
 
-    A = sparse.csr_array((csr_vals, col_indices, row_offsets), shape=matrix_shape)
+    A = sparse.csr_array(
+        (csr_vals, col_indices, row_offsets), shape=matrix_shape
+    )
 
     B = A.todense()
     expected_B = np.array(

@@ -72,7 +72,7 @@ class TestIndexingSetItem:
 
         # make sure the values are updated correctly
         A_dense = numpy.asarray(A.todense())
-        assert numpy.allclose(A_dense[mask_dense].sum() / num_nonzeros, value)
+        assert numpy.allclose(A_dense[mask_dense].sum(), value * num_nonzeros)
 
         # TODO: Add a check/test for location of nonzeros as well
 
@@ -200,33 +200,11 @@ class TestIndexingSetItem:
         This is important because CSR format requires column indices to be
         sorted within each row for efficient operations.
         """
-        row_indices = cupynumeric.array(
-            [
-                2,
-                4,
-                5,
-                3,
-                5,
-                1,
-                1,
-                5,
-                5,
-            ]
+        row_indices = cupynumeric.array([2, 4, 5, 3, 5, 1, 1, 5, 5])
+        col_indices = cupynumeric.array([3, 1, 2, 2, 5, 1, 4, 1, 3])
+        data = cupynumeric.array(
+            [7.0, 9.0, 3.0, 4.0, 5.0, 19.0, 2.0, 99.0, 109.0]
         )
-        col_indices = cupynumeric.array(
-            [
-                3,
-                1,
-                2,
-                2,
-                5,
-                1,
-                4,
-                1,
-                3,
-            ]
-        )
-        data = cupynumeric.array([7.0, 9.0, 3.0, 4.0, 5.0, 19.0, 2.0, 99.0, 109.0])
 
         # note that the data in row 5 is ordered (2, 5, 1, 3),which will get
         # sorted to (1, 2, 5, 3) during instantiation, which is needed for indexing

@@ -44,7 +44,9 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import annotations
 
+from typing import Any
 
 from .csr import csr_array  # noqa: F401
 from .dia import dia_array  # noqa: F401
@@ -56,10 +58,11 @@ from .types import coord_ty, nnz_ty  # noqa: F401
 
 
 # returns whether or not an object is a legate sparse created sparse matrix.
-def _is_sparse_matrix(obj) -> bool:
+def _is_sparse_matrix(obj: Any) -> bool:
     return any((isinstance(obj, csr_array), isinstance(obj, dia_array)))
 
-def isspmatrix(obj) -> bool:
+
+def isspmatrix(obj: Any) -> bool:
     """Check if an object is a legate sparse matrix.
 
     Parameters
@@ -81,7 +84,7 @@ def isspmatrix(obj) -> bool:
     return _is_sparse_matrix(obj)
 
 
-def issparse(obj) -> bool:
+def issparse(obj: Any) -> bool:
     """Check if an object is a legate sparse matrix.
 
     Parameters
@@ -104,7 +107,7 @@ def issparse(obj) -> bool:
 
 
 # Variants for each particular format type.
-def isspmatrix_csr(obj):
+def isspmatrix_csr(obj: Any) -> bool:
     """Check if an object is a CSR sparse matrix.
 
     Parameters

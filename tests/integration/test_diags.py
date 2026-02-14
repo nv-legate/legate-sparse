@@ -23,7 +23,9 @@ import legate_sparse as sparse
 
 @pytest.mark.parametrize("N", [12, 34])
 @pytest.mark.parametrize("diagonals", [3, 5])
-@pytest.mark.parametrize("dtype", (np.float32, np.float64, np.complex64, np.complex128))
+@pytest.mark.parametrize(
+    "dtype", (np.float32, np.float64, np.complex64, np.complex128)
+)
 @pytest.mark.parametrize("fmt", ["csr", "dia"])
 def test_diags(N, diagonals, dtype, fmt):
     A = sparse.diags(

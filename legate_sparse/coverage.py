@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from functools import wraps
 from types import FunctionType, MethodDescriptorType, MethodType, ModuleType
-from typing import Any, Container, Mapping, Optional, cast
+from typing import Any, Callable, Container, Mapping, TypeVar, cast
 
 from legate.core import track_provenance
 from typing_extensions import Protocol
@@ -27,7 +27,7 @@ MOD_INTERNAL = {"__dir__", "__getattr__"}
 def filter_namespace(
     ns: Mapping[str, Any],
     *,
-    omit_names: Optional[Container[str]] = None,
+    omit_names: Container[str] | None = None,
     omit_types: tuple[type, ...] = (),
 ) -> dict[str, Any]:
     omit_names = omit_names or set()
@@ -43,8 +43,7 @@ def should_wrap(obj: object) -> bool:
 
 
 class AnyCallable(Protocol):
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        ...
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 def wrap(func: AnyCallable) -> Any:
@@ -56,7 +55,9 @@ def wrap(func: AnyCallable) -> Any:
     return wrapper
 
 
-def clone_module(origin_module: ModuleType, new_globals: dict[str, Any]) -> None:
+def clone_module(
+    origin_module: ModuleType, new_globals: dict[str, Any]
+) -> None:
     """Copy attributes from one module to another, excluding submodules
 
     Function types are wrapped with a decorator to report API calls. All
@@ -84,7 +85,10 @@ def clone_module(origin_module: ModuleType, new_globals: dict[str, Any]) -> None
             new_globals[attr] = wrapped
 
 
-def clone_scipy_arr_kind(origin_class: type) -> Any:
+T = TypeVar("T")
+
+
+def clone_scipy_arr_kind(origin_class: type) -> Callable[[T], T]:
     """Copy attributes from an origin class to the input class.
 
     Method types are wrapped with a decorator to report API calls. All
@@ -92,7 +96,7 @@ def clone_scipy_arr_kind(origin_class: type) -> Any:
 
     """
 
-    def body(cls: type):
+    def body(cls: T) -> T:
         for attr, value in cls.__dict__.items():
             # Only need to wrap things that are in the origin class to begin
             # with

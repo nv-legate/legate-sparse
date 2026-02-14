@@ -60,7 +60,9 @@ class BufferAllocation:
 
     def total_bytes(self) -> int:
         """Calculate total bytes allocated including data type size."""
-        type_size = TYPE_SIZES.get(self.type, 1)  # Default to 1 byte if type not found
+        type_size = TYPE_SIZES.get(
+            self.type, 1
+        )  # Default to 1 byte if type not found
         return self.size * type_size
 
     def total_mb(self) -> float:
@@ -68,7 +70,9 @@ class BufferAllocation:
         return self.total_bytes() / (1024 * 1024)
 
 
-def are_similar_sizes(size1: float, size2: float, threshold_percent: float) -> bool:
+def are_similar_sizes(
+    size1: float, size2: float, threshold_percent: float
+) -> bool:
     """
     Check if two sizes are similar within the given percentage threshold.
 
@@ -190,7 +194,10 @@ def filter_allocations(
 
     filtered = []
     for alloc in allocations:
-        if alloc.description not in ignore_descriptions and alloc.total_mb() >= min_mb:
+        if (
+            alloc.description not in ignore_descriptions
+            and alloc.total_mb() >= min_mb
+        ):
             filtered.append(alloc)
     return filtered
 
@@ -215,9 +222,9 @@ def print_description_group(
         max_bytes = max(alloc.total_bytes() for alloc in allocs)
         print(f"\n{desc}:")
         print(
-            f"  Total bytes (includes non-unique allocs): {desc_total_bytes / (1024*1024):.2f} MB"
+            f"  Total bytes (includes non-unique allocs): {desc_total_bytes / (1024 * 1024):.2f} MB"
         )
-        print(f"  Max bytes  : {max_bytes / (1024*1024):.2f} MB")
+        print(f"  Max bytes  : {max_bytes / (1024 * 1024):.2f} MB")
 
         # Track seen entries for this description
         seen_entries = set()
@@ -275,9 +282,9 @@ def print_size_group(
 
         print(f"\nSize: {size} elements:")
         print(
-            f"  Total bytes (includes non-unique allocs): {size_total_bytes / (1024*1024):.2f} MB"
+            f"  Total bytes (includes non-unique allocs): {size_total_bytes / (1024 * 1024):.2f} MB"
         )
-        print(f"  Max bytes  : {max_bytes / (1024*1024):.2f} MB")
+        print(f"  Max bytes  : {max_bytes / (1024 * 1024):.2f} MB")
 
         for alloc in allocs:
             mb_size = alloc.total_mb()

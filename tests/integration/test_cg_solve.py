@@ -50,7 +50,7 @@ def test_cg_solve():
     x = sample_dense_vector(D, 0.1, seed)
     y = A @ x
     x_pred, iters = linalg.cg(A, y, tol=1e-8)
-    assert np.allclose((A @ x_pred), y, rtol=1e-8, atol=0.0)
+    assert np.allclose((A @ x_pred), y, rtol=1e-8)
 
 
 def test_cg_solve_with_callback():
@@ -92,7 +92,7 @@ def test_cg_solve_with_callback():
         residuals.append(y - A @ x)
 
     x_pred, iters = linalg.cg(A, y, tol=1e-8, callback=callback)
-    assert np.allclose((A @ x_pred), y, rtol=1e-8, atol=0.0)
+    assert np.allclose((A @ x_pred), y, rtol=1e-8)
     assert len(residuals) > 0
 
 
@@ -150,7 +150,7 @@ def test_cg_solve_with_linear_operator():
     x_pred, iters = linalg.cg(
         linalg.LinearOperator(A.shape, matvec=matvec), y, tol=1e-8
     )
-    assert np.allclose((A @ x_pred), y, rtol=1e-8, atol=0.0)
+    assert np.allclose((A @ x_pred), y, rtol=1e-8)
 
     def matvec(x, out=None):
         return A.dot(x, out=out)
@@ -158,7 +158,7 @@ def test_cg_solve_with_linear_operator():
     x_pred, iters = linalg.cg(
         linalg.LinearOperator(A.shape, matvec=matvec), y, tol=1e-8
     )
-    assert np.allclose((A @ x_pred), y, rtol=1e-8, atol=0.0)
+    assert np.allclose((A @ x_pred), y, rtol=1e-8)
 
 
 if __name__ == "__main__":

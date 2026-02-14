@@ -28,6 +28,9 @@ struct ExpandPosToCoordinatesImplBody;
 
 template <VariantKind KIND>
 struct ExpandPosToCoordinatesImpl {
+  TaskContext context;
+  explicit ExpandPosToCoordinatesImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE>
   void operator()(ExpandPosToCoordinatesArgs& args) const
   {
@@ -41,7 +44,8 @@ struct ExpandPosToCoordinatesImpl {
     if (pos_domain.empty() || row_indices_domain.empty()) {
       return;
     }
-    ExpandPosToCoordinatesImplBody<KIND, INDEX_CODE>()(pos, row_indices, args.pos.shape<1>());
+    ExpandPosToCoordinatesImplBody<KIND, INDEX_CODE>{context}(
+      pos, row_indices, args.pos.shape<1>());
   }
 };
 
@@ -52,7 +56,7 @@ static void pos_to_coordinates_template(TaskContext context)
     context.outputs()[0],
     context.inputs()[0],
   };
-  index_type_dispatch(args.row_indices.code(), ExpandPosToCoordinatesImpl<KIND>(), args);
+  index_type_dispatch(args.row_indices.code(), ExpandPosToCoordinatesImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

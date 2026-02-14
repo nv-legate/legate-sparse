@@ -90,7 +90,9 @@ def banded_matrix(
 
         pred = np.arange(nnz_per_row - half_nnz, nnz_per_row + 1)
         post = np.flip(pred)
-        nnz_arr = np.concatenate((pred, np.ones(main_rows) * nnz_per_row, post))
+        nnz_arr = np.concatenate(
+            (pred, np.ones(main_rows) * nnz_per_row, post)
+        )
 
         if sparse.__name__ == "legate_sparse":
             row_offsets = np.zeros(N + 1).astype(sparse.coord_ty)

@@ -44,10 +44,13 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import annotations
 
-import cupynumeric
-import numpy
-import scipy  # type: ignore
+from typing import TYPE_CHECKING
+
+import cupynumeric as cn
+import numpy as np
+import scipy
 
 from .base import CompressedBase
 from .coverage import clone_scipy_arr_kind
@@ -58,6 +61,11 @@ from .utils import (
     get_store_from_cupynumeric_array,
     store_to_cupynumeric_array,
 )
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    import numpy.typing as npt
 
 
 # Temporary implementation for matrix generation in examples
@@ -128,7 +136,13 @@ class dia_array(CompressedBase):
            [0, 7, 9]])
     """
 
-    def __init__(self, arg, shape=None, dtype=None, copy=False):
+    def __init__(
+        self,
+        arg: tuple[cn.ndarray, cn.ndarray],
+        shape: tuple[int, ...] | None = None,
+        dtype: npt.dtype[Any] | None = None,
+        copy: bool = False,
+    ) -> None:
         """Initialize a DIA array.
 
         Parameters
@@ -169,14 +183,14 @@ class dia_array(CompressedBase):
         assert isinstance(arg, tuple)
         data, offsets = arg
         if isinstance(offsets, int):
-            offsets = cupynumeric.full((1,), offsets)
+            offsets = cn.full((1,), offsets)
         data, offsets = cast_arr(data), cast_arr(offsets)
         if dtype is not None:
             data = data.astype(dtype)
         dtype = data.dtype
         assert dtype is not None
-        if not isinstance(dtype, numpy.dtype):
-            dtype = numpy.dtype(dtype)
+        if not isinstance(dtype, np.dtype):
+            dtype = np.dtype(dtype)
 
         self.dtype = dtype
         # Ensure that we don't accidentally include ndarray
@@ -185,10 +199,10 @@ class dia_array(CompressedBase):
         # legate under the hood.
         self.shape = tuple(int(i) for i in shape)
         self._offsets = get_store_from_cupynumeric_array(offsets, copy=copy)
-        self._data = get_store_from_cupynumeric_array(data, copy=copy)
+        self._store = get_store_from_cupynumeric_array(data, copy=copy)
 
     @property
-    def nnz(self):
+    def nnz(self) -> int:
         """Number of stored values, including explicit zeros.
 
         Returns
@@ -211,7 +225,7 @@ class dia_array(CompressedBase):
         return int(nnz)
 
     @property
-    def data(self):
+    def data(self) -> cn.ndarray:
         """Get the data array of the DIA matrix.
 
         Returns
@@ -220,10 +234,10 @@ class dia_array(CompressedBase):
             The data array containing the diagonal values. Each row represents
             a diagonal, with shape (n_diagonals, max_diagonal_length).
         """
-        return store_to_cupynumeric_array(self._data)
+        return store_to_cupynumeric_array(self._store)
 
     @property
-    def offsets(self):
+    def offsets(self) -> cn.ndarray:
         """Get the offsets array of the DIA matrix.
 
         Returns
@@ -235,7 +249,7 @@ class dia_array(CompressedBase):
         """
         return store_to_cupynumeric_array(self._offsets)
 
-    def copy(self):
+    def copy(self) -> dia_array:
         """Returns a copy of this matrix.
 
         Returns
@@ -243,11 +257,13 @@ class dia_array(CompressedBase):
         dia_array
             A copy of the matrix with the same data and structure.
         """
-        data = cupynumeric.array(self.data)
-        offsets = cupynumeric.array(self.offsets)
+        data = cn.array(self.data)
+        offsets = cn.array(self.offsets)
         return dia_array((data, offsets), shape=self.shape, dtype=self.dtype)
 
-    def transpose(self, axes=None, copy=False):
+    def transpose(
+        self, axes: tuple[int, ...] | None = None, copy: bool = False
+    ) -> dia_array:
         """Reverses the dimensions of the sparse matrix.
 
         Parameters
@@ -295,13 +311,13 @@ class dia_array(CompressedBase):
         offsets = -self.offsets
 
         # re-align the data matrix
-        r = cupynumeric.arange(len(offsets), dtype=coord_ty)[:, None]
-        c = cupynumeric.arange(num_rows, dtype=coord_ty) - (offsets % max_dim)[:, None]
+        r = cn.arange(len(offsets), dtype=coord_ty)[:, None]
+        c = cn.arange(num_rows, dtype=coord_ty) - (offsets % max_dim)[:, None]
         pad_amount = max(0, max_dim - self.data.shape[1])
-        data = cupynumeric.hstack(
+        data = cn.hstack(
             (
                 self.data,
-                cupynumeric.zeros(
+                cn.zeros(
                     (self.data.shape[0], pad_amount), dtype=self.data.dtype
                 ),
             )
@@ -316,7 +332,7 @@ class dia_array(CompressedBase):
 
     T = property(transpose, doc="Transpose of the matrix")
 
-    def tocsr(self, copy=False):
+    def tocsr(self, copy: bool = False) -> csr_array:
         """Convert this matrix to a CSR matrix.
 
         Parameters
@@ -341,7 +357,7 @@ class dia_array(CompressedBase):
         return self.transpose(copy=copy)._tocsr_transposed(copy=False)
 
     # This routine is lifted from scipy.sparse's converter.
-    def _tocsr_transposed(self, copy=False):
+    def _tocsr_transposed(self, copy: bool = False) -> csr_array:
         """Convert the transposed DIA matrix to CSR format.
 
         This internal method converts a transposed DIA matrix to CSR format.
@@ -374,7 +390,7 @@ class dia_array(CompressedBase):
 
         num_rows, num_cols = self.shape
         num_offsets, offset_len = self.data.shape
-        offset_inds = cupynumeric.arange(offset_len)
+        offset_inds = cn.arange(offset_len)
 
         row = offset_inds - self.offsets[:, None]
         mask = row >= 0
@@ -383,14 +399,14 @@ class dia_array(CompressedBase):
         mask &= self.data != 0
 
         idx_dtype = coord_ty
-        indptr = cupynumeric.zeros(num_cols + 1, dtype=idx_dtype)
+        indptr = cn.zeros(num_cols + 1, dtype=idx_dtype)
         # note that the output dtype in a reduction (e.g, sum) determines
         # the dtype of the accumulator that is used in the reduction
         # in cupynumeric, it looks like the output dtype is set to the src
         # dtype if unspecified and that results in the output not performing
         # an integer sum. But we want the integer sum, so specify
         # dtype as idx_dtype to mask.sum()
-        indptr[1 : offset_len + 1] = cupynumeric.cumsum(
+        indptr[1 : offset_len + 1] = cn.cumsum(
             mask.sum(axis=0, dtype=idx_dtype)[:num_cols]
         )
         if offset_len < num_cols:
@@ -398,7 +414,10 @@ class dia_array(CompressedBase):
         indices = row.T[mask.T].astype(idx_dtype, copy=False)
         data = self.data.T[mask.T]
         return csr_array(
-            (data, indices, indptr), shape=self.shape, dtype=self.dtype, copy=False
+            (data, indices, indptr),
+            shape=self.shape,
+            dtype=self.dtype,
+            copy=False,
         )
 
 

@@ -38,16 +38,19 @@ Command line arguments:
 --package: Backend to use (legate, cupy, scipy)
 """
 
+from __future__ import annotations
+
 # This PDE solving application is derived from
 # https://aquaulb.github.io/book_solving_pde_mooc/solving_pde_mooc/notebooks/05_IterativeMethods/05_01_Iteration_and_2D.html.
 
 import argparse
 import sys
+from typing import Any
 
-from common import get_phase_procs, parse_common_args
+from common import Timer, get_phase_procs, parse_common_args
 
 
-def d2_mat_dirichlet_2d(nx, ny, dx, dy):
+def d2_mat_dirichlet_2d(nx: int, ny: int, dx: float, dy: float) -> Any:
     """
     Constructs the matrix for the centered second-order accurate
     second-order derivative for Dirichlet boundary conditions in 2D
@@ -114,7 +117,7 @@ def d2_mat_dirichlet_2d(nx, ny, dx, dy):
     return d2mat
 
 
-def p_exact_2d(X, Y):
+def p_exact_2d(X: Any, Y: Any) -> Any:
     """Computes the exact solution of the Poisson equation in the domain
     [0, 1]x[-0.5, 0.5] with rhs:
     b = (np.sin(np.pi * X) * np.cos(np.pi * Y) +
@@ -133,14 +136,26 @@ def p_exact_2d(X, Y):
         exact solution of the Poisson equation
     """
 
-    sol = -1.0 / (2.0 * np.pi**2) * np.sin(np.pi * X) * np.cos(np.pi * Y) - 1.0 / (
-        50.0 * np.pi**2
-    ) * np.sin(5.0 * np.pi * X) * np.cos(5.0 * np.pi * Y)
+    sol = -1.0 / (2.0 * np.pi**2) * np.sin(np.pi * X) * np.cos(
+        np.pi * Y
+    ) - 1.0 / (50.0 * np.pi**2) * np.sin(5.0 * np.pi * X) * np.cos(
+        5.0 * np.pi * Y
+    )
 
     return sol
 
 
-def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, timer):
+def execute(
+    nx: int,
+    ny: int,
+    plot: bool,
+    plot_fname: str,
+    throughput: bool,
+    tol: float,
+    max_iters: int,
+    warmup_iters: int,
+    timer: Timer,
+) -> None:
     # Grid parameters.
     xmin, xmax = 0.0, 1.0  # limits in the x direction
     ymin, ymax = -0.5, 0.5  # limits in the y direction
@@ -181,9 +196,9 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         # Compute the rhs. Note that we non-dimensionalize the coordinates
         # x and y with the size of the domain in their respective dire-
         # ctions.
-        b = np.sin(np.pi * X) * np.cos(np.pi * Y) + np.sin(5.0 * np.pi * X) * np.cos(
-            5.0 * np.pi * Y
-        )
+        b = np.sin(np.pi * X) * np.cos(np.pi * Y) + np.sin(
+            5.0 * np.pi * X
+        ) * np.cos(5.0 * np.pi * Y)
 
         # b is currently a 2D array. We need to convert it to a column-major
         # ordered 1D array. This is done with the flatten numpy function.
@@ -194,7 +209,7 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         # count combinations as well. Even more annoyingly, doing any sort
         # of flatten results in some bad assignment of equivalence sets within
         # Legion's dependence analysis. So if we're just testing solve
-        # throughput, use an array of all ones.
+        # throughpu: boolt, use an array of all ones.
         if throughput:
             n = b.shape[0] - 2
             bflat = np.ones((n * n,))
@@ -218,7 +233,13 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
         # If we're testing throughput, run only the prescribed number of iterations.
         if throughput:
             if use_legate:
-                p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters, conv_test_iters=max_iters)
+                p_sol, iters = linalg.cg(
+                    A,
+                    bflat,
+                    rtol=tol,
+                    maxiter=max_iters,
+                    conv_test_iters=max_iters,
+                )
             else:
                 p_sol, iters = linalg.cg(A, bflat, rtol=tol, maxiter=max_iters)
         else:
@@ -242,8 +263,12 @@ def execute(nx, ny, plot, plot_fname, throughput, tol, max_iters, warmup_iters, 
 
             # Check convergence with relative tolerance
             convergence_status = True if norm_res <= norm_ini * tol else False
-            print(f"Did the solution converge           : {convergence_status}")
-            print(f"Final relative residual norm        : {norm_res / norm_ini}")
+            print(
+                f"Did the solution converge           : {convergence_status}"
+            )
+            print(
+                f"Final relative residual norm        : {norm_res / norm_ini}"
+            )
             if iters > 0:
                 print(f"Number of iterations                : {iters}")
                 print(f"Time per iteration (ms)             : {total / iters}")
@@ -321,10 +346,14 @@ if __name__ == "__main__":
     )
 
     args, _ = parser.parse_known_args()
-    _, timer, np, sparse, linalg, use_legate = parse_common_args()
+    package, timer, np, sparse, linalg, use_legate = parse_common_args()
 
-    if args.throughput and (args.max_iters is None or args.warmup_iters is None):
-        print("Must provide --max-iters and --warmup-iters when using --throughput.")
+    if args.throughput and (
+        args.max_iters is None or args.warmup_iters is None
+    ):
+        print(
+            "Must provide --max-iters and --warmup-iters when using --throughput."
+        )
         sys.exit(1)
 
     execute(**vars(args), timer=timer)

@@ -126,6 +126,10 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
       return std::nullopt;
     }
 
+    case LEGATE_SPARSE_SPSOLVE: {
+      return std::nullopt;
+    }
+
     default: {
       // Handle any unhandled enum values
       LEGATE_ABORT("Unsupported Legate Sparse task_id: " + std::to_string(task_id));
