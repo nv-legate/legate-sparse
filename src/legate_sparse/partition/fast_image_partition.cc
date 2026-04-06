@@ -23,10 +23,10 @@ using namespace legate;
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void)
-{
+static const auto sparse_reg_task_ = []() -> char {
   FastImageRange::register_variants();
-}
+  return 0;
+}();
 }  // namespace
 
 }  // namespace sparse

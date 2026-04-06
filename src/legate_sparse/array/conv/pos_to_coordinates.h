@@ -23,20 +23,14 @@
 namespace sparse {
 
 struct ExpandPosToCoordinatesArgs {
-  const legate::PhysicalStore result;
+  const legate::PhysicalStore row_indices;
   const legate::PhysicalStore pos;
 };
 
 class ExpandPosToCoordinates : public SparseTask<ExpandPosToCoordinates> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_EXPAND_POS_TO_COORDINATES};
-
-  static constexpr legate::VariantOptions CPU_VARIANT_OPTIONS =
-    legate::VariantOptions{}.with_has_allocations(true);
-  static constexpr legate::VariantOptions OMP_VARIANT_OPTIONS =
-    legate::VariantOptions{}.with_has_allocations(true);
-  static constexpr legate::VariantOptions GPU_VARIANT_OPTIONS =
-    legate::VariantOptions{}.with_has_allocations(true);
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_EXPAND_POS_TO_COORDINATES}};
 
  public:
   static void cpu_variant(legate::TaskContext ctx);

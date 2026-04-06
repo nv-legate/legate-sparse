@@ -29,6 +29,9 @@ struct ZipToRect1ImplBody;
 
 template <VariantKind KIND, typename VAL>
 struct ZipToRect1Impl {
+  TaskContext context;
+  explicit ZipToRect1Impl(TaskContext context) : context(context) {}
+
   void operator()(ZipToRect1Args& args) const
   {
     auto output = args.out.write_accessor<Rect<1>, 1>();
@@ -37,7 +40,7 @@ struct ZipToRect1Impl {
     if (args.out.domain().empty()) {
       return;
     }
-    ZipToRect1ImplBody<KIND, VAL>()(output, lo, hi, args.out.shape<1>());
+    ZipToRect1ImplBody<KIND, VAL>{context}(output, lo, hi, args.out.shape<1>());
   }
 };
 
@@ -47,10 +50,10 @@ static void zip_to_rect_1_template(TaskContext context)
   auto inputs = context.inputs();
   ZipToRect1Args args{context.outputs()[0], inputs[0], inputs[1]};
   if (inputs[0].data().type().code() == legate::Type::Code::INT64) {
-    ZipToRect1Impl<KIND, int64_t>{}(args);
+    ZipToRect1Impl<KIND, int64_t>{context}(args);
   } else {
     assert(inputs[0].data().type().code() == legate::Type::Code::UINT64);
-    ZipToRect1Impl<KIND, uint64_t>{}(args);
+    ZipToRect1Impl<KIND, uint64_t>{context}(args);
   }
 }
 

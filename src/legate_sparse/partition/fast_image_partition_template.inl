@@ -30,6 +30,9 @@ struct FastImageRangeImplBody;
 
 template <VariantKind KIND>
 struct FastImageRangeImpl {
+  TaskContext context;
+  explicit FastImageRangeImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE>
   void operator()(FastImageRangeArgs& args) const
   {
@@ -43,7 +46,7 @@ struct FastImageRangeImpl {
     if (args.input_crd.domain().empty()) {
       return;
     }
-    FastImageRangeImplBody<KIND, INDEX_CODE>()(
+    FastImageRangeImplBody<KIND, INDEX_CODE>{context}(
       output_pos, input_pos, input_crd, args.input_pos.shape<1>(), args.input_crd.shape<1>());
   }
 };
@@ -52,7 +55,7 @@ template <VariantKind KIND>
 static void fast_image_range_template(TaskContext context)
 {
   FastImageRangeArgs args{context.output(0), context.input(0), context.input(1)};
-  index_type_dispatch(args.input_crd.code(), FastImageRangeImpl<KIND>{}, args);
+  index_type_dispatch(args.input_crd.code(), FastImageRangeImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

@@ -31,6 +31,9 @@ struct CSRToDenseImplBody;
 
 template <VariantKind KIND>
 struct CSRToDenseImpl {
+  TaskContext context;
+  explicit CSRToDenseImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(CSRToDenseArgs& args) const
   {
@@ -45,7 +48,7 @@ struct CSRToDenseImpl {
     if (args.A_vals.domain().empty()) {
       return;
     }
-    CSRToDenseImplBody<KIND, INDEX_CODE, VAL_CODE>()(
+    CSRToDenseImplBody<KIND, INDEX_CODE, VAL_CODE>{context}(
       A_vals, B_pos, B_crd, B_vals, args.A_vals.shape<2>());
   }
 };
@@ -61,7 +64,7 @@ static void csr_to_dense_template(TaskContext context)
   CSRToDenseArgs args{outputs[0], context.inputs()[0], context.inputs()[1], context.inputs()[2]};
 
   index_type_value_type_dispatch(
-    args.B_crd.code(), args.A_vals.code(), CSRToDenseImpl<KIND>{}, args);
+    args.B_crd.code(), args.A_vals.code(), CSRToDenseImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

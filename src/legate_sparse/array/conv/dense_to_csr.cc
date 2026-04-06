@@ -23,6 +23,9 @@ using namespace legate;
 
 template <Type::Code VAL_CODE>
 struct DenseToCSRNNZImplBody<VariantKind::CPU, VAL_CODE> {
+  TaskContext context;
+  explicit DenseToCSRNNZImplBody(TaskContext context) : context(context) {}
+
   using VAL_TY = type_of<VAL_CODE>;
 
   void operator()(const AccessorWO<nnz_ty, 2>& nnz,
@@ -43,6 +46,9 @@ struct DenseToCSRNNZImplBody<VariantKind::CPU, VAL_CODE> {
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct DenseToCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit DenseToCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 
@@ -77,11 +83,12 @@ struct DenseToCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void)
-{
+
+static const auto sparse_reg_task_ = []() -> char {
   DenseToCSRNNZ::register_variants();
   DenseToCSR::register_variants();
-}
+  return 0;
+}();
 
 }  // namespace
 

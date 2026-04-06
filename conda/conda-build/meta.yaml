@@ -1,0 +1,174 @@
+{% set name = "legate-sparse" %}
+{% if gpu_enabled == "true" %}
+  {% set gpu_enabled_bool = true %}
+{% elif gpu_enabled == "false" %}
+  {% set gpu_enabled_bool = false %}
+{% else %}
+  {# We need to have a default value for the initial pass over the recipe #}
+  {% set gpu_enabled_bool = false %}
+{% endif %}
+## The placeholder version is strictly for making two-pass conda build process.
+## It should not be used for any other purpose, and this is not a default version.
+{% set placeholder_version = '0.0.0.dev' %}
+{% set legate_cuda_version = environ.get('LEGATE_CUDA_VERSION') %}
+{% if not legate_cuda_version %}
+invalid_yaml_missing_cuda_version: LEGATE_CUDA_VERSION must be set
+{% endif %}
+{% set cuda_version='.'.join(legate_cuda_version.split('.')[:2]) %}
+{% set cuda_major=cuda_version.split('.')[0]|int %}
+{% set py_version=environ.get('CONDA_PY', '') %}
+
+{% if build_number is defined %}
+    {# do nothing if defined #}
+{% else %}
+    {% set build_number = environ.get('GIT_DESCRIBE_NUMBER', '0') %}
+{% endif %}
+{% if package_version is defined %}
+    {% set version = package_version %}
+## The tag must be in one of the two formats (where N is a digit):
+## vNN.NN.NN
+## vNN.NN.NN.dev
+
+## Note: default values are only given to make conda build work. They should not be necessary in principle.
+{% elif 'dev' in environ.get('GIT_DESCRIBE_TAG', placeholder_version) %}
+    {% set version = (environ.get('GIT_DESCRIBE_TAG', placeholder_version) ~ environ.get('GIT_DESCRIBE_NUMBER', '')).lstrip('v') %}
+{% else %}
+    {% set version = environ.get('GIT_DESCRIBE_TAG', placeholder_version).lstrip('v') %}
+{% endif %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+{% if package_tar is defined %}
+  url: {{ package_tar }}
+{% elif use_local_path is defined %}
+  path: ../../
+{% else %}
+  git_url: ../../
+{% endif %}
+
+build:
+  skip: true # [not linux]
+  number: {{ build_number }}
+  missing_dso_whitelist:
+    -  '*libcuda.so*'
+{% if gpu_enabled_bool %}
+{% set cpu_gpu_tag='gpu' %}
+{% else %}
+{% set cpu_gpu_tag='cpu' %}
+{% endif %}
+{% set upload_tag='' %}
+
+## Create legate/cupynumeric version and build string
+{% set legate_version = os.environ.get("LEGATE_VERSION", "1.0.0") %}
+{% set legate_buildstr = "_".join(["py" ~ py_version, "*" ~ cpu_gpu_tag.strip('_'), os.environ.get("LEGATE_BUILDSTR", "") ]) %}
+{% set cupynumeric_version = os.environ.get("CUPYNUMERIC_VERSION", "1.0.0") %}
+{% set cupynumeric_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, cpu_gpu_tag, os.environ.get("CUPYNUMERIC_BUILDSTR", "")]) %}
+
+{% if use_local_path is not defined %}
+# use git hash
+  string: "cuda{{ cuda_major }}_py{{ py_version }}_{{ GIT_DESCRIBE_HASH }}_{{ PKG_BUILDNUM }}_{{ cpu_gpu_tag }}{{ upload_tag }}"
+{% else %}
+# do not use git hash
+  string: "cuda{{ cuda_major }}_py{{ py_version }}_{{ PKG_BUILDNUM }}_{{ cpu_gpu_tag }}{{ upload_tag }}"
+{% endif %}
+  script_env:
+    - SCCACHE_BUCKET
+    - SCCACHE_REGION
+    - SCCACHE_IDLE_TIMEOUT
+    - SCCACHE_S3_KEY_PREFIX
+    - SCCACHE_S3_KEY_PREFIX
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - BUILD_MARCH
+{% if not gpu_enabled_bool %}
+    - CPU_ONLY=1
+  # The CPU-only packages having more track_features than the GPU builds helps
+  # the solver to prefer the GPU builds when both are viable candidates.
+  # ref: https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html#track-features
+  track_features:
+    - cpu_only
+{% endif %}
+
+ignore_run_exports_from:
+  # scikit-build should really be a part of the build env, but then it installs its own Python.  Conda build stacks
+  # the build environment on the host environment, and the build python takes over causing paths havoc.  So, we put
+  # scikit-build into the host env, but we ignore any exports it may bring.
+  - scikit-build
+
+requirements:
+  build:
+    - make
+    - ninja
+    - cmake {{ cmake_version }}
+    - {{ stdlib("c") }}
+    - {{ compiler('c') }} =14
+    - {{ compiler('cxx') }} =14
+    - pkg-config
+{% if gpu_enabled_bool %}
+    - cuda-version ={{ cuda_version }}
+    - {{ compiler('cuda') }}
+    - cuda-cudart-dev
+    - libcusparse-dev
+{% endif %}
+
+
+  host:
+    # List shared libraries *for the target platfrom* here
+    - python
+    - scikit-build
+    # libcurand is used both in CPU and GPU builds
+    #- libcurand-dev
+    - openblas =* =*openmp*
+    - llvm-openmp
+    - legate ={{ legate_version }}=*{{ legate_buildstr }}
+    - cupynumeric ={{ cupynumeric_version }}={{ cupynumeric_buildstr }}
+{% if gpu_enabled_bool %}
+    # cupynumeric could be only in the run section and we could have just legate
+    # here, but we want to make sure that we get a legate version compatible
+    # with *some* cupynumeric.  With the dev versions, if we pick the latest
+    # legate, there may not be a cupynumeric package that is compatible.  So, we
+    # list cupynumeric here to get a pair of legate and cupynumeric that are
+    # compatible.
+    - cuda-version ={{ cuda_version }}
+    - cuda-cccl
+    - libcusparse
+    - libcudss-dev
+    - nccl <2.29
+    - cuda-cudart
+{% endif %}
+
+  run:
+    - numpy {{ numpy_version }}
+    - scipy
+    - openblas =* =*openmp*
+    - cupynumeric ={{ cupynumeric_version }}={{ cupynumeric_buildstr }}
+{% if gpu_enabled_bool %}
+    - libnvjitlink
+    - libcusparse
+    # ship the NCCL comm layer so multi-GPU cudss runs can load libcudss_commlayer_nccl.so
+    - libcudss-commlayer-nccl
+    - nccl >=2.0,<2.29
+    # Pin to all minor versions of CUDA newer than the one built against, within the same major version.
+    # cuda-version constrains the CUDA runtime version and ensures a compatible driver is available
+    - {{ pin_compatible('cuda-version', min_pin='x.x', max_pin='x') }}
+    - __cuda >={{ cuda_version }}
+    - cuda-cudart
+{% endif %}
+
+  run_constrained:
+    - __glibc >=2.17  # [linux]
+
+about:
+  home: https://github.com/nv-legate/legate-sparse
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: 'Aspiring drop-in replacment for Scipy Sparse'
+  description: |
+    Legate Sparse is a Legate library that aims to provide
+    a distributed and accelerated drop-in replacement
+    for the Scipy Sparse API on top of the Legate runtime.
+  doc_url: https://github.com/nv-legate/legate-sparse
+  dev_url: https://github.com/nv-legate/legate-sparse

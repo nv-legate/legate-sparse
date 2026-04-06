@@ -29,6 +29,9 @@ struct AXPBYImplBody;
 
 template <VariantKind KIND>
 struct AXPBYImpl {
+  TaskContext context;
+  explicit AXPBYImpl(TaskContext context) : context(context) {}
+
   template <Type::Code VAL_CODE>
   void operator()(AXPBYArgs& args) const
   {
@@ -42,15 +45,15 @@ struct AXPBYImpl {
     }
     if (args.isalpha) {
       if (args.negate) {
-        AXPBYImplBody<KIND, VAL_CODE, true, true>()(y, x, a, b, args.y.shape<1>());
+        AXPBYImplBody<KIND, VAL_CODE, true, true>{context}(y, x, a, b, args.y.shape<1>());
       } else {
-        AXPBYImplBody<KIND, VAL_CODE, true, false>()(y, x, a, b, args.y.shape<1>());
+        AXPBYImplBody<KIND, VAL_CODE, true, false>{context}(y, x, a, b, args.y.shape<1>());
       }
     } else {
       if (args.negate) {
-        AXPBYImplBody<KIND, VAL_CODE, false, true>()(y, x, a, b, args.y.shape<1>());
+        AXPBYImplBody<KIND, VAL_CODE, false, true>{context}(y, x, a, b, args.y.shape<1>());
       } else {
-        AXPBYImplBody<KIND, VAL_CODE, false, false>()(y, x, a, b, args.y.shape<1>());
+        AXPBYImplBody<KIND, VAL_CODE, false, false>{context}(y, x, a, b, args.y.shape<1>());
       }
     }
   }
@@ -67,7 +70,7 @@ static void axpby_template(TaskContext context)
     context.scalars()[0].value<bool>(),
     context.scalars()[1].value<bool>(),
   };
-  value_type_dispatch(args.y.code(), AXPBYImpl<KIND>{}, args);
+  value_type_dispatch(args.y.code(), AXPBYImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

@@ -15,6 +15,7 @@
  */
 
 #include "legate_sparse/io/mtx_to_coo.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #include <fstream>
 
@@ -34,13 +35,13 @@ using val_ty   = double;
   // within DISTAL.
   assert(ctx.is_single_task());
   // Regardless of how inputs are added, scalar future return values are at the front.
-  auto& m_store   = ctx.outputs()[0];
-  auto& n_store   = ctx.outputs()[1];
-  auto& nnz_store = ctx.outputs()[2];
-  auto& rows      = ctx.outputs()[3];
-  auto& cols      = ctx.outputs()[4];
-  auto& vals      = ctx.outputs()[5];
-  auto filename   = ctx.scalars()[0].value<std::string>();
+  auto m_store   = ctx.output(0);
+  auto n_store   = ctx.output(1);
+  auto nnz_store = ctx.output(2);
+  auto rows      = ctx.output(3);
+  auto cols      = ctx.output(4);
+  auto vals      = ctx.output(5);
+  auto filename  = ctx.scalar(0).value<std::string>();
   std::fstream file;
   file.open(filename, std::fstream::in);
 
@@ -106,9 +107,12 @@ using val_ty   = double;
     bufSize *= 2;
   }
 
-  auto row_acc  = rows.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
-  auto col_acc  = cols.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  auto row_acc = rows.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  LOG_BUFFER(coord_ty, bufSize, "IO: rows");
+  auto col_acc = cols.data().create_output_buffer<coord_ty, 1>(bufSize, true /* return_data */);
+  LOG_BUFFER(coord_ty, bufSize, "IO: cols");
   auto vals_acc = vals.data().create_output_buffer<val_ty, 1>(bufSize, true /* return_data */);
+  LOG_BUFFER(val_ty, bufSize, "IO: vals");
 
   size_t idx = 0;
   while (std::getline(file, line)) {
@@ -144,7 +148,11 @@ using val_ty   = double;
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void) { ReadMTXToCOO::register_variants(); }
+static const auto sparse_reg_task_ = []() -> char {
+  ReadMTXToCOO::register_variants();
+  return 0;
+}();
+
 }  // namespace
 
 }  // namespace sparse

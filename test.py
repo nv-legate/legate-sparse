@@ -44,5 +44,4 @@ if __name__ == "__main__":
 
     plan = TestPlan(config, system)
 
-    plan.execute()
-    sys.exit(0)
+    sys.exit(plan.execute())

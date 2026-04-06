@@ -17,17 +17,21 @@
 #pragma once
 
 #include "legate.h"
+#include "legate_sparse/util/legate_utils.h"
 
 namespace sparse {
+
+using namespace legate;
 
 class ThrustAllocator : public legate::ScopedAllocator {
  public:
   using value_type = char;
 
-  ThrustAllocator(Legion::Memory::Kind kind) : legate::ScopedAllocator(kind) {}
+  ThrustAllocator(Memory::Kind kind) : legate::ScopedAllocator(kind) {}
 
   char* allocate(size_t num_bytes)
   {
+    LOG_BUFFER(char, num_bytes, "ThrustAllocator::allocate");
     return static_cast<char*>(ScopedAllocator::allocate(num_bytes));
   }
 

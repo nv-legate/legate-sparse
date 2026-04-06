@@ -32,9 +32,9 @@ std::vector<StoreMapping> LegateSparseMapper::store_mappings(
   const Task& task, const std::vector<StoreTarget>& options)
 {
   const auto& inputs = task.inputs();
-  std::vector<StoreMapping> mappings(inputs.size());
+  std::vector<StoreMapping> mappings;
   for (size_t i = 0; i < inputs.size(); i++) {
-    mappings[i] = StoreMapping::default_mapping(inputs[i].data(), options.front());
+    mappings.push_back(StoreMapping::default_mapping(inputs[i].data(), options.front()));
   }
   return std::move(mappings);
 }
@@ -54,19 +54,20 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
         // GPU variant has two buffers with pre-determined size and
         // another one based on output from cuSparse
         // For the default spmv algorithm using csr format, cuSparse
-        // could allocate ceil(nnz  / nthreads_per_block ) * sizeof(double) bytes
-        // of temporary memory. Since this expression could change in the future,
-        // we use this estimate and use a factor of safety to sheild us from
-        // mapper errors while noting that nthreads_per_block is 128 on newer
-        // GPUs and 32 on older ones.
+        // could allocate ceil(nnz  / nthreads_per_block ) * sizeof(double)
+        // bytes of temporary memory. Since this expression could change in the
+        // future, we use this estimate and use a factor of safety to sheild us
+        // from mapper errors while noting that nthreads_per_block is 128 on
+        // newer GPUs and 32 on older ones.
 
         auto pos  = task.inputs()[0];
         auto crd  = task.inputs()[1];
         auto vals = task.inputs()[2];
 
-        std::size_t nrows_plus_one   = pos.domain().get_volume() + 1;
-        std::size_t nnz              = vals.domain().get_volume();
-        std::size_t factor_of_safety = 1.15;  // make sure we don't fail; 1.15 is arbitrary
+        std::size_t nrows_plus_one = pos.domain().get_volume() + 1;
+        std::size_t nnz            = vals.domain().get_volume();
+        // make sure we don't fail; 1.15 is arbitrary
+        std::size_t factor_of_safety = static_cast<std::size_t>(1.15);
         std::size_t cusparseSpMV_buffer_size =
           factor_of_safety * std::ceil(nnz / 32.0) * sizeof(double);
         std::size_t legate_buffer_size = nrows_plus_one * (vals.type().size() + crd.type().size());
@@ -84,7 +85,8 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
       // Allocations done in the omp version:
       // (1) Three arrays of types bool, index_ty, val_ty and of
       //     size: (max_col - min_col of c) * nthreads
-      // (2) Extra storage from thrust::minmax_element(). Use O(1) words, say, 2?
+      // (2) Extra storage from thrust::minmax_element(). Use O(1) words, say,
+      // 2?
 
       // For the first one, if we assume that datatype size is 17 bytes per word
       // (1 for bool, and 8 each for index and val types),
@@ -111,15 +113,6 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
       return std::nullopt;
     }
 
-    case LEGATE_SPARSE_EXPAND_POS_TO_COORDINATES: {
-      // Two temp buffers explictly created but there are a number of thrust
-      // calls. Thrust could create temp buffer for these whose sizes can't be
-      // predicted. We are going to use unbounded pool size until
-      // we can estimate the pool size better
-
-      return std::nullopt;
-    }
-
     case LEGATE_SPARSE_READ_MTX_TO_COO: {
       // Three output buffers created but size depends on the file,
       // so we cannot estimate upper bound
@@ -132,10 +125,17 @@ std::optional<std::size_t> LegateSparseMapper::allocation_pool_size(const Task& 
       // and then update the estimate here
       return std::nullopt;
     }
-  }
 
-  LEGATE_ABORT("Unsupported Legate Sparse task_id: " + std::to_string(task_id));
-  return {};
+    case LEGATE_SPARSE_SPSOLVE: {
+      return std::nullopt;
+    }
+
+    default: {
+      // Handle any unhandled enum values
+      LEGATE_ABORT("Unsupported Legate Sparse task_id: " + std::to_string(task_id));
+      return {};
+    }
+  }
 }
 
 Scalar LegateSparseMapper::tunable_value(legate::TunableID tunable_id)

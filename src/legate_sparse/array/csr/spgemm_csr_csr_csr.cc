@@ -17,6 +17,7 @@
 #include "legate_sparse/array/csr/spgemm_csr_csr_csr.h"
 #include "legate_sparse/array/csr/spgemm_csr_csr_csr_template.inl"
 #include "legate_sparse/util/thrust_allocator.h"
+#include "legate_sparse/util/legate_utils.h"
 
 #include <thrust/extrema.h>
 
@@ -26,6 +27,9 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE>
 struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRNNZImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorWO<nnz_ty, 1>& nnz,
@@ -49,8 +53,8 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
 
     // Next, initialize the deferred buffers ourselves, instead of using
     // Realm fills (which tend to be slower).
-    auto index_list_buf  = legate::create_buffer<INDEX_TY, 1>(A2_dim, Memory::SYSTEM_MEM);
-    auto already_set_buf = legate::create_buffer<bool, 1>(A2_dim, Memory::SYSTEM_MEM);
+    auto index_list_buf  = CREATE_BUFFER(INDEX_TY, A2_dim, Memory::SYSTEM_MEM, "index_list_buf");
+    auto already_set_buf = CREATE_BUFFER(bool, A2_dim, Memory::SYSTEM_MEM, "already_set_buf");
     for (INDEX_TY i = 0; i < A2_dim; i++) {
       index_list_buf[i]  = 0;
       already_set_buf[i] = false;
@@ -93,6 +97,9 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 
@@ -121,9 +128,9 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
 
     // Next, initialize the deferred buffers ourselves, instead of using
     // Realm fills (which tend to be slower).
-    auto index_list_buf  = legate::create_buffer<INDEX_TY, 1>(A2_dim, Memory::SYSTEM_MEM);
-    auto already_set_buf = legate::create_buffer<bool, 1>(A2_dim, Memory::SYSTEM_MEM);
-    auto workspace_buf   = legate::create_buffer<VAL_TY, 1>(A2_dim, Memory::SYSTEM_MEM);
+    auto index_list_buf  = CREATE_BUFFER(INDEX_TY, A2_dim, Memory::SYSTEM_MEM, "index_list_buf");
+    auto already_set_buf = CREATE_BUFFER(bool, A2_dim, Memory::SYSTEM_MEM, "already_set_buf");
+    auto workspace_buf   = CREATE_BUFFER(VAL_TY, A2_dim, Memory::SYSTEM_MEM, "workspace_buf");
     for (INDEX_TY i = 0; i < A2_dim; i++) {
       index_list_buf[i]  = 0;
       already_set_buf[i] = false;
@@ -176,12 +183,13 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void)
-{
+static const auto sparse_reg_task_ = []() -> char {
   SpGEMMCSRxCSRxCSRNNZ::register_variants();
   SpGEMMCSRxCSRxCSR::register_variants();
   SpGEMMCSRxCSRxCSRGPU::register_variants();
-}
+  return 0;
+}();
+
 }  // namespace
 
 }  // namespace sparse

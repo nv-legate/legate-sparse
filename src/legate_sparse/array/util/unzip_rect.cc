@@ -23,6 +23,9 @@ using namespace legate;
 
 template <>
 struct UnZipRect1ImplBody<VariantKind::CPU> {
+  TaskContext context;
+  explicit UnZipRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorWO<int64_t, 1>& out1,
                   const AccessorWO<int64_t, 1>& out2,
                   const AccessorRO<Rect<1>, 1>& in,
@@ -42,7 +45,11 @@ struct UnZipRect1ImplBody<VariantKind::CPU> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void) { UnZipRect1::register_variants(); }
+static const auto sparse_reg_task_ = []() -> char {
+  UnZipRect1::register_variants();
+  return 0;
+}();
+
 }  // namespace
 
 }  // namespace sparse

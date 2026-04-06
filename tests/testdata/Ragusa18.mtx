@@ -14,9 +14,9 @@
 %-------------------------------------------------------------------------------
 % notes:
 % ------------------------------------------------------------------------------
-% Pajek network converted to sparse adjacency matrix for inclusion in UF sparse 
+% Pajek network converted to sparse adjacency matrix for inclusion in UF sparse
 % matrix collection, Tim Davis.  For Pajek datasets, See V. Batagelj & A. Mrvar,
-% http://vlado.fmf.uni-lj.si/pub/networks/data/.                                
+% http://vlado.fmf.uni-lj.si/pub/networks/data/.
 % ------------------------------------------------------------------------------
 %-------------------------------------------------------------------------------
 23 23 64

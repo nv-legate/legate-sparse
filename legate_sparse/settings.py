@@ -14,24 +14,17 @@
 #
 from __future__ import annotations
 
-from legate.util.settings import PrioritizedSetting, Settings, convert_bool
+from legate.util.settings import (
+    PrioritizedSetting,
+    Settings,
+    convert_bool,
+    convert_str,
+)
 
 __all__ = ("settings",)
 
 
 class SparseRuntimeSettings(Settings):
-    precise_images: PrioritizedSetting[bool] = PrioritizedSetting(
-        "precise-images",
-        "LEGATE_SPARSE_PRECISE_IMAGES",
-        default=False,
-        convert=convert_bool,
-        help="""
-        Use precise images instead of approximate min-max boundary based
-        images. This can potentially reduce communication volume at the cost of
-        increasing startup time before application steady state.
-        """,
-    )
-
     fast_spgemm: PrioritizedSetting[bool] = PrioritizedSetting(
         "fast-spgemm",
         "LEGATE_SPARSE_FAST_SPGEMM",
@@ -41,6 +34,16 @@ class SparseRuntimeSettings(Settings):
         Switch to faster CUSPARSE_SPGEMM_ALG1, which, however, use
         significantly more FB memory. It will be used by default when cusparse<12.1,
         where memory-restricted SpGEMM was introduced.
+        """,
+    )
+
+    cudss_commnccl_loc: PrioritizedSetting[bool] = PrioritizedSetting(
+        "cudss-comm-lib",
+        "CUDSS_COMM_LIB",
+        default="",
+        convert=convert_str,
+        help="""
+        For multi-gpu runs, set CUDSS_COMM_LIB env to /path/to/libcudss_commlayer_nccl.so
         """,
     )
 

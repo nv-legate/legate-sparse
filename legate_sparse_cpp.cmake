@@ -19,6 +19,7 @@
 
 option(BUILD_SHARED_LIBS "Build legate sparse shared libraries" ON)
 option(legate_sparse_EXCLUDE_LEGATE_FROM_ALL "Exclude legate targets from Legate Sparse's 'all' target" OFF)
+option(ENABLE_BUFFER_LOGGING "Enable logging of deferred buffers and allocators" OFF)
 
 ##############################################################################
 # - Project definition -------------------------------------------------------
@@ -104,6 +105,7 @@ if(Legion_USE_CUDA)
   )
 
   include(cmake/thirdparty/get_nccl.cmake)
+  include(cmake/thirdparty/get_cudss.cmake)
 endif()
 
 # End From cupynumeric
@@ -123,8 +125,6 @@ set_cpu_arch_flags(legate_sparse_CXX_OPTIONS)
 
 
 list(APPEND legate_sparse_SOURCES
-  src/legate_sparse/projections.cc
-
   src/legate_sparse/mapper/mapper.cc
 
   src/legate_sparse/array/conv/dense_to_csr.cc
@@ -134,7 +134,8 @@ list(APPEND legate_sparse_SOURCES
   src/legate_sparse/array/csr/get_diagonal.cc
   src/legate_sparse/array/csr/spmv.cc
   src/legate_sparse/array/csr/spgemm_csr_csr_csr.cc
-  
+  src/legate_sparse/array/csr/indexing.cc
+
   src/legate_sparse/array/util/unzip_rect.cc
   src/legate_sparse/array/util/zip_to_rect.cc
 
@@ -142,6 +143,8 @@ list(APPEND legate_sparse_SOURCES
 
   src/legate_sparse/io/mtx_to_coo.cc
   src/legate_sparse/linalg/axpby.cc
+  src/legate_sparse/linalg/spsolve.cc
+  src/legate_sparse/array/csr/geam.cc
 )
 
 if(Legion_USE_OpenMP)
@@ -153,6 +156,8 @@ if(Legion_USE_OpenMP)
     src/legate_sparse/array/csr/get_diagonal_omp.cc
     src/legate_sparse/array/csr/spmv_omp.cc
     src/legate_sparse/array/csr/spgemm_csr_csr_csr_omp.cc
+    src/legate_sparse/array/csr/indexing_omp.cc
+    src/legate_sparse/array/csr/geam_omp.cc
 
     src/legate_sparse/array/util/unzip_rect_omp.cc
     src/legate_sparse/array/util/zip_to_rect_omp.cc
@@ -163,7 +168,7 @@ endif()
 
 if(Legion_USE_CUDA)
   list(APPEND legate_sparse_SOURCES
-    src/legate_sparse/cudalibs.cu 
+    src/legate_sparse/cudalibs.cu
 
     src/legate_sparse/array/conv/dense_to_csr.cu
     src/legate_sparse/array/conv/csr_to_dense.cu
@@ -172,19 +177,22 @@ if(Legion_USE_CUDA)
     src/legate_sparse/array/csr/get_diagonal.cu
     src/legate_sparse/array/csr/spmv.cu
     src/legate_sparse/array/csr/spgemm_csr_csr_csr.cu
+    src/legate_sparse/array/csr/indexing.cu
+    src/legate_sparse/array/csr/geam.cu
 
     src/legate_sparse/array/util/unzip_rect.cu
     src/legate_sparse/array/util/zip_to_rect.cu
-    
+
     src/legate_sparse/partition/fast_image_partition.cu
 
     src/legate_sparse/linalg/axpby.cu
+    src/legate_sparse/linalg/spsolve.cu
   )
 endif()
 
 
 list(APPEND legate_sparse_SOURCES
-  
+
   # This must always be the last file!
   # It guarantees we do our registration callback
   # only after all task variants are recorded
@@ -218,6 +226,12 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(platform_rpath_origin "@loader_path")
 endif ()
 
+if(ENABLE_BUFFER_LOGGING)
+  add_compile_definitions(ENABLE_BUFFER_LOGGING=1)
+else()
+  add_compile_definitions(ENABLE_BUFFER_LOGGING=0)
+endif()
+
 set_target_properties(legate_sparse
            PROPERTIES BUILD_RPATH                         "${platform_rpath_origin}"
                       INSTALL_RPATH                       "${platform_rpath_origin}"
@@ -229,17 +243,21 @@ set_target_properties(legate_sparse
                       CUDA_STANDARD_REQUIRED              ON
                       LIBRARY_OUTPUT_DIRECTORY            lib)
 
+# NOTE: For multi-GPU runs, the env CUDSS_COMM_LIB must be set to path to libcudss_commlayer_nccl.so
+# conda install -c conda-forge libcudss libcudss-dev libcudss-commlayer-nccl
+# should install it in ${CONDA_PREFIX}/lib/
 target_link_libraries(legate_sparse
    PUBLIC legate::legate
           $<TARGET_NAME_IF_EXISTS:NCCL::NCCL>
           # do we need to put this dependency here?
           # what is the correct target?
           # cupynumeric::cupynumeric
-  PRIVATE 
+  PRIVATE
           # Add Conda library and include paths
           $<TARGET_NAME_IF_EXISTS:conda_env>
           $<TARGET_NAME_IF_EXISTS:CUDA::cublas>
           $<TARGET_NAME_IF_EXISTS:CUDA::cusparse>
+          $<TARGET_NAME_IF_EXISTS:cudss>
           $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>)
 
 
@@ -296,7 +314,7 @@ install(
   FILES src/legate_sparse/sparse_c.h
         #TODO: ?
         #${CMAKE_CURRENT_BINARY_DIR}/include/cupynumeric/version_config.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legate_sprase)
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/legate_sparse)
 
 
 ##############################################################################

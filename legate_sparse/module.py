@@ -44,7 +44,9 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import annotations
 
+from typing import Any
 
 from .csr import csr_array  # noqa: F401
 from .dia import dia_array  # noqa: F401
@@ -55,16 +57,67 @@ from .io import mmread  # noqa: F401
 from .types import coord_ty, nnz_ty  # noqa: F401
 
 
-# is_sparse_matrix returns whether or not an object is a legate
-# sparse created sparse matrix.
-def is_sparse_matrix(o):
-    return any((isinstance(o, csr_array),))
+# returns whether or not an object is a legate sparse created sparse matrix.
+def _is_sparse_matrix(obj: Any) -> bool:
+    return any((isinstance(obj, csr_array), isinstance(obj, dia_array)))
 
 
-issparse = is_sparse_matrix
-isspmatrix = is_sparse_matrix
+def isspmatrix(obj: Any) -> bool:
+    """Check if an object is a legate sparse matrix.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is a legate sparse matrix, False otherwise.
+
+    Notes
+    -----
+    This function checks if the object is an instance of any supported
+    sparse matrix format in legate_sparse. Currently, only
+    CSR and DIA formats for supported.
+    """
+    return _is_sparse_matrix(obj)
+
+
+def issparse(obj: Any) -> bool:
+    """Check if an object is a legate sparse matrix.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is a legate sparse matrix, False otherwise.
+
+    Notes
+    -----
+    This function checks if the object is an instance of any supported
+    sparse matrix format in legate_sparse. Currently, only
+    CSR and DIA formats for supported.
+    """
+    return _is_sparse_matrix(obj)
 
 
 # Variants for each particular format type.
-def isspmatrix_csr(o):
-    return isinstance(o, csr_array)
+def isspmatrix_csr(obj: Any) -> bool:
+    """Check if an object is a CSR sparse matrix.
+
+    Parameters
+    ----------
+    obj : object
+        The object to check.
+
+    Returns
+    -------
+    bool
+        True if the object is a CSR sparse matrix, False otherwise.
+    """
+    return isinstance(obj, csr_array)

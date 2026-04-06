@@ -11,15 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-import numpy
+import numpy as np
 
 # Define some common types. Hopefully as we make more
 # progress in generalizing the compute kernels, we can
 # remove this code.
-coord_ty = numpy.dtype(numpy.int64)
-nnz_ty = numpy.dtype(numpy.uint64)
-float64 = numpy.dtype(numpy.float64)
-int32 = numpy.dtype(numpy.int32)
-int64 = numpy.dtype(numpy.int64)
-uint64 = numpy.dtype(numpy.uint64)
+coord_ty = np.dtype(np.int64)
+"""Data type for coordinate indices in sparse matrices (int64)."""
+
+nnz_ty = np.dtype(np.uint64)
+"""Data type for non-zero counts in sparse matrices (uint64)."""
+
+float64 = np.dtype(np.float64)
+"""64-bit floating point data type."""
+
+int32 = np.dtype(np.int32)
+"""32-bit integer data type."""
+
+int64 = np.dtype(np.int64)
+"""64-bit integer data type."""
+
+uint64 = np.dtype(np.uint64)
+"""64-bit unsigned integer data type."""

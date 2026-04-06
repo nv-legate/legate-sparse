@@ -30,11 +30,12 @@ from legate.core import (
 from .config import SparseOpCode, _library
 
 if TYPE_CHECKING:
-    from typing import Optional, Union
+    from typing import Any
 
     import numpy.typing as npt
+    from legate.core import Library
 
-TO_CORE_DTYPES = {
+TO_CORE_DTYPES: dict[npt.DTypeLike, types.Type] = {
     np.dtype(np.bool_): types.bool_,
     np.dtype(np.int8): types.int8,
     np.dtype(np.int16): types.int16,
@@ -54,13 +55,10 @@ TO_CORE_DTYPES = {
 
 # TODO (marsaev): rename to SparseRuntime to avoid confusion?
 class Runtime:
-    def __init__(self, sparse_library):
+    def __init__(self, sparse_library: Library) -> None:
         self.sparse_library = sparse_library
         self.legate_runtime = get_legate_runtime()
         self.legate_machine = get_machine()
-
-        self.dynamic_projection_functor_id = 1
-        self.proj_fn_1d_to_2d_cache = {}
 
         # Load all the necessary CUDA libraries if we have GPUs.
         if self.num_gpus > 0:
@@ -69,25 +67,25 @@ class Runtime:
             task = self.legate_runtime.create_manual_task(
                 self.sparse_library,
                 SparseOpCode.LOAD_CUDALIBS,
-                launch_shape=Shape((self.num_gpus,)),
+                launch_shape=(self.num_gpus,),
             )
             task.execute()
             self.legate_runtime.issue_execution_fence(block=True)
 
     @property
-    def num_procs(self):
+    def num_procs(self) -> int:
         return self.legate_machine.count(self.legate_machine.preferred_target)
 
     @property
-    def num_gpus(self):
+    def num_gpus(self) -> int:
         return self.legate_machine.count(TaskTarget.GPU)
 
     def create_store(
         self,
-        ty: Union[npt.DTypeLike],
-        shape: Optional[Union[tuple[int, ...], Shape]] = None,
+        ty: npt.dtype[Any] | types.Type,
+        shape: Shape | tuple[int, ...] | None = None,
         optimize_scalar: bool = False,
-        ndim: Optional[int] = None,
+        ndim: int | None = None,
     ) -> LogicalStore:
         core_ty = TO_CORE_DTYPES[ty] if isinstance(ty, np.dtype) else ty
         return self.legate_runtime.create_store(
@@ -95,11 +93,13 @@ class Runtime:
         )
 
     # only OpCode
-    def create_auto_task(self, OpCode) -> AutoTask:
-        return self.legate_runtime.create_auto_task(self.sparse_library, OpCode)
+    def create_auto_task(self, OpCode: int) -> AutoTask:
+        return self.legate_runtime.create_auto_task(
+            self.sparse_library, OpCode
+        )
 
     # OpCode and launch domains
-    def create_manual_task(self, OpCode, *args) -> ManualTask:
+    def create_manual_task(self, OpCode: int, *args: Any) -> ManualTask:
         return self.legate_runtime.create_manual_task(
             self.sparse_library, OpCode, *args
         )

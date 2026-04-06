@@ -44,8 +44,12 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import annotations
 
-import cupynumeric
+from typing import TYPE_CHECKING
+
+import cupynumeric as cn
+import numpy as np
 from legate.core import LogicalStore, align
 
 from .config import SparseOpCode, rect1
@@ -58,22 +62,75 @@ from .utils import (
     store_to_cupynumeric_array,
 )
 
+if TYPE_CHECKING:
+    from typing import Any, Callable
+
+    import numpy.typing as npt
+
+    from cupynumeric.types import CastingKind
+
 
 # CompressedBase is a base class for several different kinds of sparse
 # matrices, such as CSR, CSC, COO and DIA.
 class CompressedBase:
+    """Base class for compressed sparse matrix formats.
+
+    This class provides common functionality for compressed sparse matrix
+    formats like CSR, CSC, COO, and DIA. It handles the conversion from
+    non-zero counts to position arrays and provides common operations.
+
+    Notes
+    -----
+    This is an internal base class and should not be instantiated directly.
+    Use specific format classes like csr_array instead.
+    """
+
+    shape: tuple[int, ...]
+    pos: LogicalStore
+    dtype: npt.dtype[Any]
+    format: str
+    crd: LogicalStore
+    _data: cn.ndarray
+
+    def __init__(self, *args: Any, **kw: Any) -> None:
+        super().__init__(*args, **kw)
+
+    @property
+    def data(self) -> cn.ndarray:
+        return self._data
+
+    @property
+    def size(self) -> int:
+        raise NotImplementedError
+
     @classmethod
-    def nnz_to_pos_cls(cls, q_nnz: LogicalStore):
+    def nnz_to_pos_cls(
+        cls, q_nnz: LogicalStore
+    ) -> tuple[LogicalStore, cn.ndarray]:
+        """Convert non-zero counts to position arrays.
+
+        This class method converts an array of non-zero counts per row/column
+        into the position array used in compressed sparse formats.
+
+        Parameters
+        ----------
+        q_nnz : LogicalStore
+            Store containing the number of non-zeros per row/column.
+
+        Returns
+        -------
+        tuple
+            (pos, total_nnz) where pos is the position array and total_nnz
+            is the total number of non-zeros.
+        """
         q_nnz_arr = store_to_cupynumeric_array(q_nnz)
-        cs = cupynumeric.cumsum(q_nnz_arr)
+        cs = cn.cumsum(q_nnz_arr)
         cs_shifted = cs - q_nnz_arr
         cs_store = get_store_from_cupynumeric_array(cs)
         cs_shifted_store = get_store_from_cupynumeric_array(cs_shifted)
         # Zip the scan result into a rect1 region for the pos.
         pos = runtime.create_store(
-            rect1,  # type: ignore
-            shape=(q_nnz.shape[0],),
-            optimize_scalar=False,
+            rect1, shape=(q_nnz.shape[0],), optimize_scalar=False
         )
         task = runtime.create_auto_task(SparseOpCode.ZIP_TO_RECT1)
         pos_var = task.add_output(pos)
@@ -85,10 +142,51 @@ class CompressedBase:
         # Don't convert cs[-1] to an int to avoid blocking.
         return pos, cs[-1]
 
-    def nnz_to_pos(self, q_nnz: LogicalStore):
+    def nnz_to_pos(
+        self, q_nnz: LogicalStore
+    ) -> tuple[LogicalStore, cn.ndarray]:
+        """Convert non-zero counts to position arrays for this instance.
+
+        Parameters
+        ----------
+        q_nnz : LogicalStore
+            Store containing the number of non-zeros per row/column.
+
+        Returns
+        -------
+        tuple
+            (pos, total_nnz) where pos is the position array and total_nnz
+            is the total number of non-zeros.
+        """
         return CompressedBase.nnz_to_pos_cls(q_nnz)
 
-    def asformat(self, format, copy=False):
+    def copy(self) -> CompressedBase:
+        raise NotImplementedError()
+
+    def asformat(
+        self, format: str | None, copy: bool = False
+    ) -> CompressedBase:
+        """Convert the matrix to a specified format.
+
+        Parameters
+        ----------
+        format : str
+            The desired format ('csr', 'csc', 'coo', etc.).
+        copy : bool, optional
+            Whether to create a copy. Default is False.
+
+        Returns
+        -------
+        sparse matrix
+            Matrix in the requested format.
+
+        Raises
+        ------
+        ValueError
+            If the format is unknown.
+        NotImplementedError
+            If conversion to the requested format is not implemented.
+        """
         if format is None or format == self.format:
             if copy:
                 raise NotImplementedError
@@ -96,7 +194,9 @@ class CompressedBase:
                 return self
         else:
             try:
-                convert_method = getattr(self, "to" + format)
+                convert_method: Callable[..., CompressedBase] = getattr(
+                    self, "to" + format
+                )
             except AttributeError as e:
                 raise ValueError("Format {} is unknown.".format(format)) from e
 
@@ -107,36 +207,57 @@ class CompressedBase:
                 return convert_method()
 
     # The implementation of sum is mostly lifted from scipy.sparse.
-    def sum(self, axis=None, dtype=None, out=None):
-        """
-        Sum the matrix elements over a given axis.
+    def sum(
+        self,
+        axis: int | None = None,
+        dtype: npt.dtype[Any] | None = None,
+        out: cn.ndarray | None = None,
+    ) -> cn.ndarray:
+        """Sum the matrix elements over a given axis.
+
         Parameters
         ----------
-        axis : {-2, -1, 0, 1, None} optional
+        axis : {-2, -1, 0, 1, None}, optional
             Axis along which the sum is computed. The default is to
             compute the sum of all the matrix elements, returning a scalar
             (i.e., `axis` = `None`).
         dtype : dtype, optional
             The type of the returned matrix and of the accumulator in which
-            the elements are summed.  The dtype of `a` is used by default
+            the elements are summed. The dtype of `a` is used by default
             unless `a` has an integer dtype of less precision than the default
-            platform integer.  In that case, if `a` is signed then the platform
+            platform integer. In that case, if `a` is signed then the platform
             integer is used while if `a` is unsigned then an unsigned integer
             of the same precision as the platform integer is used.
-            .. versionadded:: 0.18.0
-        out : np.matrix, optional
-            Alternative output matrix in which to place the result. It must
+        out : cupynumeric.ndarray, optional
+            Alternative output array in which to place the result. It must
             have the same shape as the expected output, but the type of the
             output values will be cast if necessary.
-            .. versionadded:: 0.18.0
+
         Returns
         -------
-        sum_along_axis : np.matrix
+        sum_along_axis : cupynumeric.ndarray or scalar
             A matrix with the same shape as `self`, with the specified
-            axis removed.
+            axis removed, or a scalar if axis=None.
+
+        Raises
+        ------
+        NotImplementedError
+            If axis=0 (sum over columns) is requested.
+        ValueError
+            If out is provided but has incompatible shape.
+
+        Notes
+        -----
+        The implementation uses multiplication by a matrix of ones to achieve
+        the sum. For some sparse matrix formats more efficient methods are
+        possible and should override this function.
+
+        Currently, summing over columns (axis=0) is not implemented due to
+        the lack of right matrix multiplication support.
+
         See Also
         --------
-        numpy.matrix.sum : NumPy's implementation of 'sum' for matrices
+        cupynumeric.matrix.sum : NumPy's implementation of 'sum' for matrices
         """
 
         # We use multiplication by a matrix of ones to achieve this.
@@ -159,10 +280,10 @@ class CompressedBase:
             # TODO: (marsaev) currently not supported as we don't have rmatmul yet
             # (need CSC to have easier sum over columns)
             raise NotImplementedError
-            ret = self.__rmatmul__(cupynumeric.ones((1, m), dtype=res_dtype))
+            # ret = self.__rmatmul__(cn.ones((1, m), dtype=res_dtype))
         else:
             # sum over rows
-            ret = self @ cupynumeric.ones((n, 1), dtype=res_dtype)
+            ret = self @ cn.ones((n, 1), dtype=res_dtype)
 
         if out is not None and out.shape != ret.shape:
             raise ValueError("dimensions do not match")
@@ -170,10 +291,28 @@ class CompressedBase:
         return ret.sum(axis=axis, dtype=dtype, out=out)
 
     # needed by _data_matrix
-    def _with_data(self, data, copy=True):
-        """Returns a _different_ matrix object with the same sparsity structure as self,
-        but with different data.  By default the structure arrays
-        (i.e. .indptr and .indices) are copied. 'data' parameter is never copied.
+    def _with_data(self, data: Any, copy: bool = True) -> CompressedBase:
+        """Returns a matrix object with the same sparsity structure as self,
+        but with different data.
+
+        Parameters
+        ----------
+        data : array_like
+            The new data array. This parameter is never copied.
+        copy : bool, optional
+            Whether to copy the structure arrays (indptr and indices).
+            Default is True.
+
+        Returns
+        -------
+        sparse matrix
+            A new matrix with the same sparsity structure but different data.
+
+        Notes
+        -----
+        This method creates a new matrix object with the same sparsity pattern
+        but replaces the data array. The structure arrays (indptr and indices)
+        are copied by default to avoid modifying the original matrix.
         """
 
         # For CSR and CSC compressed base we can just reuse compressed stores,
@@ -194,8 +333,13 @@ class CompressedBase:
                 copy=False,
             )
 
-    def astype(self, dtype, casting="unsafe", copy=True):
-        dtype = cupynumeric.dtype(dtype)
+    def astype(
+        self,
+        dtype: npt.dtype[Any],
+        casting: CastingKind = "unsafe",
+        copy: bool = True,
+    ) -> CompressedBase:
+        dtype = np.dtype(dtype)
         # if type doesn't match, create a matrix copy with casted data array
         if self.dtype != dtype:
             return self._with_data(
@@ -208,24 +352,24 @@ class CompressedBase:
 # These univariate ufuncs preserve zeros.
 _ufuncs_with_fixed_point_at_zero = frozenset(
     [
-        cupynumeric.sin,
-        cupynumeric.tan,
-        cupynumeric.arcsin,
-        cupynumeric.arctan,
-        cupynumeric.sinh,
-        cupynumeric.tanh,
-        cupynumeric.arcsinh,
-        cupynumeric.arctanh,
-        cupynumeric.rint,
-        cupynumeric.sign,
-        cupynumeric.expm1,
-        cupynumeric.log1p,
-        cupynumeric.deg2rad,
-        cupynumeric.rad2deg,
-        cupynumeric.floor,
-        cupynumeric.ceil,
-        cupynumeric.trunc,
-        cupynumeric.sqrt,
+        cn.sin,
+        cn.tan,
+        cn.arcsin,
+        cn.arctan,
+        cn.sinh,
+        cn.tanh,
+        cn.arcsinh,
+        cn.arctanh,
+        cn.rint,
+        cn.sign,
+        cn.expm1,
+        cn.log1p,
+        cn.deg2rad,
+        cn.rad2deg,
+        cn.floor,
+        cn.ceil,
+        cn.trunc,
+        cn.sqrt,
     ]
 )
 
@@ -233,14 +377,14 @@ _ufuncs_with_fixed_point_at_zero = frozenset(
 for npfunc in _ufuncs_with_fixed_point_at_zero:
     name = npfunc.__name__
 
-    def _create_method(op):
-        def method(self):
+    def _create_method(op: Callable[[Any], Any]) -> Callable[[Any], Any]:
+        def method(self: Any) -> Any:
             result = op(self.data)
             return self._with_data(result)
 
-        method.__doc__ = "Element-wise %s.\n\nSee `numpy.%s` for more information." % (
-            name,
-            name,
+        method.__doc__ = (
+            "Element-wise %s.\n\nSee `numpy.%s` for more information."
+            % (name, name)
         )
         method.__name__ = name
 
@@ -249,26 +393,23 @@ for npfunc in _ufuncs_with_fixed_point_at_zero:
     setattr(CompressedBase, name, _create_method(npfunc))
 
 
-# DenseSparseBase is a base class for sparse matrices that have a TACO
-# format of {Dense, Sparse}. For our purposes, that means CSC and CSR
-# matrices.
-class DenseSparseBase:
-    def __init__(self):
-        self._balanced_pos_partition = None
-
-    # consider using _with_data() here
-    @classmethod
-    def make_with_same_nnz_structure(cls, mat, arg, shape=None, dtype=None):
-        if shape is None:
-            shape = mat.shape
-        if dtype is None:
-            dtype = mat.dtype
-        result = cls(arg, shape=shape, dtype=dtype)
-        return result
-
-
 # unpack_rect1_store unpacks a rect1 store into two int64 stores.
-def unpack_rect1_store(pos):
+def unpack_rect1_store(pos: LogicalStore) -> tuple[LogicalStore, LogicalStore]:
+    """Unpack a rect1 store into two int64 stores.
+
+    This function unpacks the compressed position array used in CSR/CSC
+    formats into separate start and end position arrays.
+
+    Parameters
+    ----------
+    pos : LogicalStore
+        The rect1 store containing packed position information.
+
+    Returns
+    -------
+    tuple
+        (lo, hi) where lo contains start positions and hi contains end positions.
+    """
     out1 = runtime.create_store(int64, shape=pos.shape)
     out2 = runtime.create_store(int64, shape=pos.shape)
     task = runtime.create_auto_task(SparseOpCode.UNZIP_RECT1)
@@ -282,7 +423,28 @@ def unpack_rect1_store(pos):
 
 
 # pack_to_rect1_store packs two int64 stores into a rect1 store.
-def pack_to_rect1_store(lo, hi, output=None):
+def pack_to_rect1_store(
+    lo: LogicalStore, hi: LogicalStore, output: LogicalStore | None = None
+) -> LogicalStore:
+    """Pack two int64 stores into a rect1 store.
+
+    This function packs separate start and end position arrays into the
+    compressed rect1 format used in CSR/CSC formats.
+
+    Parameters
+    ----------
+    lo : LogicalStore
+        Store containing start positions.
+    hi : LogicalStore
+        Store containing end positions.
+    output : LogicalStore, optional
+        Output store for the packed result. If None, creates a new store.
+
+    Returns
+    -------
+    LogicalStore
+        The packed rect1 store.
+    """
     if output is None:
         output = runtime.create_store(rect1, shape=(lo.shape[0],))
     task = runtime.create_auto_task(SparseOpCode.ZIP_TO_RECT1)

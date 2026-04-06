@@ -24,7 +24,8 @@ namespace sparse {
 
 class ReadMTXToCOO : public SparseTask<ReadMTXToCOO> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_READ_MTX_TO_COO};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_READ_MTX_TO_COO}};
 
   static constexpr legate::VariantOptions CPU_VARIANT_OPTIONS =
     legate::VariantOptions{}.with_has_allocations(true);

@@ -29,7 +29,8 @@ struct ScaleRect1Args {
 
 class ScaleRect1 : public SparseTask<ScaleRect1> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_SCALE_RECT_1};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_SCALE_RECT_1}};
   static void cpu_variant(legate::TaskContext context);
 #ifdef LEGATE_USE_OPENMP
   static void omp_variant(legate::TaskContext context);
