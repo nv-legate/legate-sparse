@@ -44,6 +44,9 @@ __global__ void denseToCSRNNZKernel(size_t rows,
 
 template <>
 struct DenseToCSRNNZImpl<VariantKind::GPU> {
+  TaskContext context;
+  explicit DenseToCSRNNZImpl(TaskContext context) : context(context) {}
+
   template <Type::Code VAL_CODE>
   void operator()(DenseToCSRNNZArgs& args) const
   {
@@ -57,7 +60,7 @@ struct DenseToCSRNNZImpl<VariantKind::GPU> {
       return;
     }
 
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
 
 // #if (CUSPARSE_VER_MAJOR < 11 || (CUSPARSE_VER_MAJOR == 11 && CUSPARSE_VER_MINOR < 2))
 #if 1
@@ -149,6 +152,9 @@ __global__ void denseToCSRKernel(size_t rows,
 
 template <>
 struct DenseToCSRImpl<VariantKind::GPU> {
+  TaskContext context;
+  explicit DenseToCSRImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(DenseToCSRArgs& args) const
   {
@@ -166,7 +172,7 @@ struct DenseToCSRImpl<VariantKind::GPU> {
     }
 
     // Get context sensitive objects.
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
 
     auto B_domain = B_vals.domain();
     auto rows     = B_domain.hi()[0] - B_domain.lo()[0] + 1;

@@ -1,0 +1,118 @@
+# Copyright (c) 2024, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = [
+    "wheel",
+    "ninja",
+    "setuptools",
+    "scikit-build>=0.13.1",
+    "cmake>=3.30.4",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "--capture=sys"
+cache_dir = "./.cache/pytest"
+
+[tool.mypy]
+python_version = "3.11"
+cache_dir = "./.cache/mypy"
+
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_column_numbers = true
+
+namespace_packages = true
+ignore_missing_imports = false
+
+disallow_any_unimported = true
+disallow_any_expr = false
+disallow_any_decorated = false
+disallow_any_explicit = false
+disallow_any_generics = true
+disallow_subclassing_any = true
+
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = true
+warn_return_any = true
+warn_unreachable = true
+
+ignore_errors = false
+
+allow_untyped_globals = false
+allow_redefinition = false
+implicit_reexport = true
+strict_equality = true
+
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+# ignore auto-generated files
+# or files depending on auto-generated field
+module = [
+  "legate_sparse.install_info",
+  "legate_sparse._version",
+  "legate._version",
+  "legate.__main__",
+  "legate.install_info",
+]
+ignore_errors = true
+
+[tool.ruff]
+cache-dir = "./.cache/ruff"
+extend-exclude = [
+    "arch-*",
+    "*-arch",
+    "venv",
+    "*venv",
+    "build",
+]
+line-length = 79
+src = [".", "legate_sparse"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint.isort.sections]
+legion = ["legion_cffi", "legion_top"]
+legate = ["legate"]
+testing = ["pytest", "pytest_mock"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["numpy", "scipy"]
+known-first-party = ["legate_sparse"]
+length-sort-straight = true
+combine-as-imports = true
+split-on-trailing-comma = false
+required-imports = ["from __future__ import annotations"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "legion",
+    "legate",
+    "first-party",
+    "local-folder",
+]

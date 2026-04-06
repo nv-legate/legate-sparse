@@ -23,6 +23,9 @@ using namespace legate;
 
 template <>
 struct ScaleRect1ImplBody<VariantKind::OMP> {
+  TaskContext context;
+  explicit ScaleRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorRW<Rect<1>, 1>& output, const int64_t scale, const Rect<1>& rect)
   {
 #pragma omp parallel for schedule(static)

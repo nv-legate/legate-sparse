@@ -22,7 +22,7 @@
 
 namespace sparse {
 
-CUDALibraries::CUDALibraries() : finalized_(false), cusparse_(nullptr) {}
+CUDALibraries::CUDALibraries() : finalized_(false), cusparse_(nullptr), cudss_(nullptr) {}
 
 CUDALibraries::~CUDALibraries() { finalize(); }
 
@@ -33,6 +33,9 @@ void CUDALibraries::finalize()
   }
   if (cusparse_ != nullptr) {
     finalize_cusparse();
+  }
+  if (cudss_ != nullptr) {
+    finalize_cudss();
   }
   finalized_ = true;
 }
@@ -51,6 +54,20 @@ cusparseHandle_t CUDALibraries::get_cusparse()
   return this->cusparse_;
 }
 
+void CUDALibraries::finalize_cudss()
+{
+  CHECK_CUDSS(cudssDestroy(cudss_));
+  cudss_ = nullptr;
+}
+
+cudssHandle_t CUDALibraries::get_cudss()
+{
+  if (this->cudss_ == nullptr) {
+    CHECK_CUDSS(cudssCreate(&this->cudss_));
+  }
+  return this->cudss_;
+}
+
 static CUDALibraries& get_cuda_libraries(legate::Processor proc)
 {
   if (proc.kind() != legate::Processor::TOC_PROC) {
@@ -63,16 +80,18 @@ static CUDALibraries& get_cuda_libraries(legate::Processor proc)
   return cuda_libraries[proc_id];
 }
 
-legate::cuda::StreamView get_cached_stream()
-{
-  return legate::cuda::StreamPool::get_stream_pool().get_stream();
-}
-
 cusparseHandle_t get_cusparse()
 {
   const auto proc = legate::Processor::get_executing_processor();
   auto& lib       = get_cuda_libraries(proc);
   return lib.get_cusparse();
+}
+
+cudssHandle_t get_cudss()
+{
+  const auto proc = legate::Processor::get_executing_processor();
+  auto& lib       = get_cuda_libraries(proc);
+  return lib.get_cudss();
 }
 
 class LoadCUDALibsTask : public SparseTask<LoadCUDALibsTask> {
@@ -86,6 +105,7 @@ class LoadCUDALibsTask : public SparseTask<LoadCUDALibsTask> {
     const auto proc = legate::Processor::get_executing_processor();
     auto& lib       = get_cuda_libraries(proc);
     lib.get_cusparse();
+    lib.get_cudss();
   }
 };
 

@@ -45,6 +45,13 @@ enum LegateSparseOpCode {
   // like iterative linear solvers.
   LEGATE_SPARSE_AXPBY,
 
+  // Sparse direct linear solve
+  LEGATE_SPARSE_SPSOLVE,
+
+  // Computes GEAM: alpha * A + beta * B = C
+  LEGATE_SPARSE_GEAM_CSR_CSR_SYMBOLIC,
+  LEGATE_SPARSE_GEAM_CSR_CSR_COMPUTE,
+
   // nonzero API
   LEGATE_SPARSE_NONZERO,
 

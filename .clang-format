@@ -1,3 +1,4 @@
+---
 Language: Cpp
 # BasedOnStyle: Google
 AccessModifierOffset: -1
@@ -17,22 +18,22 @@ AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
-AlwaysBreakTemplateDeclarations: Yes
-BinPackArguments:  false
+AlwaysBreakTemplateDeclarations: true
+BinPackArguments: false
 BinPackParameters: false
 BraceWrapping:
-  AfterClass:            false
+  AfterClass: false
   AfterControlStatement: false
-  AfterEnum:             false
-  AfterFunction:         false
-  AfterNamespace:        false
-  AfterObjCDeclaration:  false
-  AfterStruct:           false
-  AfterUnion:            false
-  AfterExternBlock:      false
-  BeforeCatch:           false
-  BeforeElse:            false
-  IndentBraces:          false
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
   # disabling the below splits, else, they'll just add to the vertical length of source files!
   SplitEmptyFunction: false
   SplitEmptyRecord: false
@@ -61,23 +62,23 @@ FixNamespaceComments: true
 ForEachMacros:
 IncludeBlocks: Preserve
 IncludeCategories:
-  - Regex:           '^<.*\.h>'
-    Priority:        1
-  - Regex:           '^<.*'
-    Priority:        2
-  - Regex:           '.*'
-    Priority:        3
-IncludeIsMainRegex: '([-_](test|unittest))?$'
+  - Regex: ^<.*\.h>
+    Priority: 1
+  - Regex: ^<.*
+    Priority: 2
+  - Regex: .*
+    Priority: 3
+IncludeIsMainRegex: ([-_](test|unittest))?$
 IndentCaseLabels: true
 IndentPPDirectives: None
-IndentWidth:     2
+IndentWidth: 2
 IndentWrappedFunctionNames: false
 InsertBraces: true
 JavaScriptQuotes: Leave
 JavaScriptWrapImports: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 MacroBlockBegin: ''
-MacroBlockEnd:   ''
+MacroBlockEnd: ''
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: None
 ObjCBinPackProtocolList: Never
@@ -95,14 +96,7 @@ PenaltyReturnTypeOnItsOwnLine: 200
 PointerAlignment: Left
 RawStringFormats:
   - Language: Cpp
-    Delimiters:
-      - cc
-      - CC
-      - cpp
-      - Cpp
-      - CPP
-      - 'c++'
-      - 'C++'
+    Delimiters: [cc, CC, cpp, Cpp, CPP, c++, C++]
     CanonicalDelimiter: ''
 # Enabling comment reflow causes doxygen comments to be messed up in their formats!
 ReflowComments: true

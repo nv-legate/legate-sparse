@@ -45,6 +45,9 @@ __global__ void compute_diag_kernel(size_t rows,
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct GetCSRDiagonalImplBody<VariantKind::GPU, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit GetCSRDiagonalImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 
@@ -54,7 +57,7 @@ struct GetCSRDiagonalImplBody<VariantKind::GPU, INDEX_CODE, VAL_CODE> {
                   const AccessorRO<VAL_TY, 1>& vals,
                   const Rect<1>& rect)
   {
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     auto blocks = get_num_blocks_1d(rect.volume());
     compute_diag_kernel<INDEX_TY, VAL_TY>
       <<<blocks, THREADS_PER_BLOCK, 0, stream>>>(rect.volume(), rect.lo[0], diag, pos, crd, vals);

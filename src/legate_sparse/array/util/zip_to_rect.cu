@@ -39,12 +39,15 @@ __global__ void zip_rect1_kernel(size_t elems,
 
 template <typename VAL>
 struct ZipToRect1ImplBody<VariantKind::GPU, VAL> {
+  TaskContext context;
+  explicit ZipToRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorWO<Rect<1>, 1>& output,
                   const AccessorRO<VAL, 1>& lo,
                   const AccessorRO<VAL, 1>& hi,
                   const Rect<1>& rect)
   {
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     auto elems  = rect.volume();
     auto blocks = get_num_blocks_1d(elems);
     zip_rect1_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo, output, lo, hi);

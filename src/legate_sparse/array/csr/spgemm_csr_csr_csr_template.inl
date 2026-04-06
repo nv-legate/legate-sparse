@@ -32,6 +32,9 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody;
 
 template <VariantKind KIND>
 struct SpGEMMCSRxCSRxCSRNNZImpl {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRNNZImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE>
   void operator()(SpGEMMCSRxCSRxCSRNNZArgs& args) const
   {
@@ -43,7 +46,7 @@ struct SpGEMMCSRxCSRxCSRNNZImpl {
     auto C_pos = args.C_pos.read_accessor<Rect<1>, 1>();
     auto C_crd = args.C_crd.read_accessor<INDEX_TY, 1>();
 
-    SpGEMMCSRxCSRxCSRNNZImplBody<KIND, INDEX_CODE>()(
+    SpGEMMCSRxCSRxCSRNNZImplBody<KIND, INDEX_CODE>{context}(
       nnz, B_pos, B_crd, C_pos, C_crd, args.B_pos.shape<1>(), args.C_crd.shape<1>());
   }
 };
@@ -53,6 +56,9 @@ struct SpGEMMCSRxCSRxCSRImplBody;
 
 template <VariantKind KIND>
 struct SpGEMMCSRxCSRxCSRImpl {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(SpGEMMCSRxCSRxCSRArgs& args) const
   {
@@ -69,17 +75,17 @@ struct SpGEMMCSRxCSRxCSRImpl {
     auto C_crd  = args.C_crd.read_accessor<INDEX_TY, 1>();
     auto C_vals = args.C_vals.read_accessor<VAL_TY, 1>();
 
-    SpGEMMCSRxCSRxCSRImplBody<KIND, INDEX_CODE, VAL_CODE>()(A_pos,
-                                                            A_crd,
-                                                            A_vals,
-                                                            B_pos,
-                                                            B_crd,
-                                                            B_vals,
-                                                            C_pos,
-                                                            C_crd,
-                                                            C_vals,
-                                                            args.B_pos.shape<1>(),
-                                                            args.C_crd.shape<1>());
+    SpGEMMCSRxCSRxCSRImplBody<KIND, INDEX_CODE, VAL_CODE>{context}(A_pos,
+                                                                   A_crd,
+                                                                   A_vals,
+                                                                   B_pos,
+                                                                   B_crd,
+                                                                   B_vals,
+                                                                   C_pos,
+                                                                   C_crd,
+                                                                   C_vals,
+                                                                   args.B_pos.shape<1>(),
+                                                                   args.C_crd.shape<1>());
   }
 };
 
@@ -95,7 +101,7 @@ static void spgemm_csr_csr_csr_nnz_template(TaskContext context)
     inputs[3],
   };
 
-  index_type_dispatch(args.B_crd.code(), SpGEMMCSRxCSRxCSRNNZImpl<KIND>{}, args);
+  index_type_dispatch(args.B_crd.code(), SpGEMMCSRxCSRxCSRNNZImpl<KIND>{context}, args);
 }
 
 template <VariantKind KIND>
@@ -115,7 +121,7 @@ static void spgemm_csr_csr_csr_template(TaskContext context)
     inputs[5],
   };
   index_type_floating_point_value_type_dispatch(
-    args.A_crd.code(), args.A_vals.code(), SpGEMMCSRxCSRxCSRImpl<KIND>{}, args);
+    args.A_crd.code(), args.A_vals.code(), SpGEMMCSRxCSRxCSRImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

@@ -32,12 +32,24 @@ Command line arguments:
 --package: Backend to use (legate, cupy, scipy)
 """
 
+from __future__ import annotations
+
 import argparse
+from typing import TYPE_CHECKING
 
-from common import banded_matrix, get_arg_number, get_phase_procs, parse_common_args
+from common import (
+    Timer,
+    banded_matrix,
+    get_arg_number,
+    get_phase_procs,
+    parse_common_args,
+)
+
+if TYPE_CHECKING:
+    from legate_sparse import csr_array
 
 
-def spgemm_dispatch(A, B):
+def spgemm_dispatch(A: csr_array, B: csr_array) -> csr_array:
     """Dispatch sparse matrix-matrix multiplication operation.
 
     Parameters
@@ -61,7 +73,9 @@ def spgemm_dispatch(A, B):
     return C
 
 
-def get_matrices(N, nnz_per_row, fname1, fname2):
+def get_matrices(
+    N: int, nnz_per_row: int, fname1: str, fname2: str
+) -> tuple[csr_array, csr_array]:
     """Get matrices for SpGEMM benchmark.
 
     Parameters
@@ -100,7 +114,15 @@ def get_matrices(N, nnz_per_row, fname1, fname2):
         return A, A.copy()
 
 
-def run_spgemm(N, nnz_per_row, fname1, fname2, iters, stable, timer):
+def run_spgemm(
+    N: int,
+    nnz_per_row: int,
+    fname1: str,
+    fname2: str,
+    iters: int,
+    stable: bool,
+    timer: Timer,
+) -> None:
     """Run sparse matrix-matrix multiplication benchmark.
 
     Parameters
@@ -229,7 +251,7 @@ if __name__ == "__main__":
     )
 
     args, _ = parser.parse_known_args()
-    _, timer, np, sparse, linalg, use_legate = parse_common_args()
+    package, timer, np, sparse, linalg, use_legate = parse_common_args()
 
     init_procs, bench_procs = get_phase_procs(use_legate)
 

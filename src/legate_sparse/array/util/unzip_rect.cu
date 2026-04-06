@@ -39,6 +39,9 @@ __global__ void unzip_rect1_kernel(size_t elems,
 
 template <>
 struct UnZipRect1ImplBody<VariantKind::GPU> {
+  TaskContext context;
+  explicit UnZipRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorWO<int64_t, 1>& out1,
                   const AccessorWO<int64_t, 1>& out2,
                   const AccessorRO<Rect<1>, 1>& in,
@@ -46,7 +49,7 @@ struct UnZipRect1ImplBody<VariantKind::GPU> {
   {
     auto elems  = rect.volume();
     auto blocks = get_num_blocks_1d(elems);
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     unzip_rect1_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo, out1, out2, in);
     LEGATE_SPARSE_CHECK_CUDA_STREAM(stream);
   }

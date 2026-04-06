@@ -18,9 +18,13 @@
 
 #include <cstdlib>
 #include "legate.h"
-#include "legate/cuda/cuda.h"
-#include "legate/cuda/stream_pool.h"
+
+// For sparse matrix ops like spGEMM and spMv
 #include <cusparse.h>
+
+// For direct solvers
+#include <cudss.h>
+
 #include <nccl.h>
 
 #define THREADS_PER_BLOCK 128
@@ -29,6 +33,12 @@
   do {                                          \
     cusparseStatus_t result = (expr);           \
     check_cusparse(result, __FILE__, __LINE__); \
+  } while (false)
+
+#define CHECK_CUDSS(expr)                    \
+  do {                                       \
+    cudssStatus_t result = (expr);           \
+    check_cudss(result, __FILE__, __LINE__); \
   } while (false)
 
 #define CHECK_NCCL(expr)                    \
@@ -102,6 +112,24 @@ __host__ inline void check_cusparse(cusparseStatus_t status, const char* file, i
   }
 }
 
+__host__ inline void check_cudss(cudssStatus_t status, const char* file, int line)
+{
+  // TODO: Need to get the equivalent error message from cuDSS
+  if (status != CUDSS_STATUS_SUCCESS) {
+    fprintf(stderr,
+            "Internal CUDSS failure with error code %d in file %s at line %d\n",
+            status,
+            // TODO
+            file,
+            line);
+#ifdef DEBUG_LEGATE_SPARSE
+    assert(false);
+#else
+    exit(status);
+#endif
+  }
+}
+
 __host__ inline void check_nccl(ncclResult_t error, const char* file, int line)
 {
   if (error != ncclSuccess) {
@@ -118,10 +146,9 @@ __host__ inline void check_nccl(ncclResult_t error, const char* file, int line)
   }
 }
 
-// Return a cached stream for the current GPU.
-legate::cuda::StreamView get_cached_stream();
-
 // Method to get the CUSPARSE handle associated with the current GPU.
 cusparseHandle_t get_cusparse();
+
+cudssHandle_t get_cudss();
 
 }  // namespace sparse

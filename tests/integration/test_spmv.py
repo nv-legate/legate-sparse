@@ -16,11 +16,11 @@ import sys
 
 import cupynumeric as np
 import pytest
-from legate_sparse.runtime import runtime
 from utils.banded_matrix import banded_matrix
 from utils.sample import simple_system_gen
 
 import legate_sparse as sparse
+from legate_sparse.runtime import runtime
 
 
 @pytest.mark.parametrize("N", [5, 29])
@@ -103,6 +103,40 @@ def test_csr_spmv_unsupported_dtype(N, nnz_per_row, unsupported_dtype):
         expected_exp = NotImplementedError
         with pytest.raises(expected_exp):
             y = A.dot(x)  # noqa: F841
+
+
+@pytest.mark.parametrize("N", [5, 29])
+@pytest.mark.parametrize("M", [7, 17])
+@pytest.mark.parametrize("complex_dtype", [np.complex64, np.complex128])
+def test_csr_spmv_complex(N, M, complex_dtype):
+    """Test sparse matrix-vector multiplication with complex datatypes.
+
+    This test verifies that sparse matrix-vector multiplication works
+    correctly for complex64 and complex128 datatypes.
+
+    Parameters
+    ----------
+    N : int
+        Number of rows in the matrix.
+    M : int
+        Number of columns in the matrix.
+    complex_dtype : dtype
+        Complex datatype to use (complex64 or complex128).
+    """
+
+    # get real and imag parts separately
+    A_dense_real, _, x_real = simple_system_gen(N, M, sparse.csr_array)
+    A_dense_imag, _, x_imag = simple_system_gen(N, M, sparse.csr_array)
+
+    A_dense = A_dense_real.astype(complex_dtype) + 1j * A_dense_imag.astype(
+        complex_dtype
+    )
+    x = x_real.astype(complex_dtype) + 1j * x_imag.astype(complex_dtype)
+    A = sparse.csr_array(A_dense.astype(complex_dtype))
+
+    y = A @ x
+
+    assert np.all(np.isclose(y, A_dense @ x))
 
 
 if __name__ == "__main__":

@@ -29,6 +29,9 @@ struct GetCSRDiagonalImplBody;
 
 template <VariantKind KIND>
 struct GetCSRDiagonalImpl {
+  TaskContext context;
+  explicit GetCSRDiagonalImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(GetCSRDiagonalArgs& args) const
   {
@@ -45,7 +48,7 @@ struct GetCSRDiagonalImpl {
       return;
     }
 
-    GetCSRDiagonalImplBody<KIND, INDEX_CODE, VAL_CODE>()(
+    GetCSRDiagonalImplBody<KIND, INDEX_CODE, VAL_CODE>{context}(
       diag, pos, crd, vals, args.diag.shape<1>());
   }
 };
@@ -56,6 +59,6 @@ static void get_csr_diagonal_template(TaskContext context)
   auto inputs = context.inputs();
   GetCSRDiagonalArgs args{context.outputs()[0], inputs[0], inputs[1], inputs[2]};
   index_type_value_type_dispatch(
-    args.crd.code(), args.diag.code(), GetCSRDiagonalImpl<KIND>{}, args);
+    args.crd.code(), args.diag.code(), GetCSRDiagonalImpl<KIND>{context}, args);
 }
 }  // namespace sparse

@@ -11,15 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import argparse
 import importlib
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
-import numpy
-from typing_extensions import Protocol
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    import numpy.typing as npt
+    from legate.timing._lib.timing import PyTime
+    from legate_sparse import csr_array
+
+np: ModuleType
+sparse: ModuleType
+linalg: ModuleType
 
 
-def get_arg_number(arg):
+def get_arg_number(arg: str) -> int:
     """Parse a string argument that may contain size suffixes.
 
     Parameters
@@ -68,11 +78,11 @@ class Timer(Protocol):
     for measuring execution time in the examples.
     """
 
-    def start(self):
+    def start(self) -> None:
         """Start timing."""
         ...
 
-    def stop(self):
+    def stop(self) -> float:
         """Stop timing and return duration.
 
         Blocks execution until everything before it has completed.
@@ -92,18 +102,20 @@ class LegateTimer(Timer):
     measurement of GPU operations.
     """
 
-    def __init__(self):
-        self._start = None
+    def __init__(self) -> None:
+        self._start: PyTime | None = None
 
-    def start(self):
+    def start(self) -> None:
         """Start timing using Legate's time function."""
         from legate.timing import time
 
         self._start = time()
 
-    def stop(self):
+    def stop(self) -> float:
         """Stop timing and return duration in milliseconds."""
         from legate.timing import time
+
+        assert self._start is not None
 
         _end = time()
         return (_end - self._start) / 1000.0
@@ -116,24 +128,26 @@ class CuPyTimer(Timer):
     in CuPy applications.
     """
 
-    def __init__(self):
-        self._start_event = None
+    def __init__(self) -> None:
+        self._start_event: Any | None = None
 
-    def start(self):
+    def start(self) -> None:
         """Start timing using CUDA events."""
-        from cupy import cuda
+        from cupy import cuda  # type: ignore [import-untyped]
 
         self._start_event = cuda.Event()
         self._start_event.record()
 
-    def stop(self):
+    def stop(self) -> float:
         """Stop timing and return duration in milliseconds."""
         from cupy import cuda
+
+        assert self._start_event is not None
 
         end_event = cuda.Event()
         end_event.record()
         end_event.synchronize()
-        return cuda.get_elapsed_time(self._start_event, end_event)
+        return cast(float, cuda.get_elapsed_time(self._start_event, end_event))
 
 
 class NumPyTimer(Timer):
@@ -143,18 +157,20 @@ class NumPyTimer(Timer):
     of CPU operations in NumPy/SciPy applications.
     """
 
-    def __init__(self):
-        self._start_time = None
+    def __init__(self) -> None:
+        self._start_time: float | None = None
 
-    def start(self):
+    def start(self) -> None:
         """Start timing using perf_counter_ns."""
         from time import perf_counter_ns
 
         self._start_time = perf_counter_ns() / 1000.0
 
-    def stop(self):
+    def stop(self) -> float:
         """Stop timing and return duration in milliseconds."""
         from time import perf_counter_ns
+
+        assert self._start_time is not None
 
         end_time = perf_counter_ns() / 1000.0
         return (end_time - self._start_time) / 1000.0
@@ -171,32 +187,31 @@ class DummyScope:
     that may or may not use resource scoping.
     """
 
-    def __init__(self):
-        ...
+    def __init__(self) -> None: ...
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Enter the context (no-op)."""
         ...
 
-    def __exit__(self, _, __, ___):
+    def __exit__(self, _: Any, __: Any, ___: Any) -> None:
         """Exit the context (no-op)."""
         ...
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: Any) -> DummyScope:
         """Return self for any indexing (no-op)."""
         return self
 
-    def count(self, _):
+    def count(self, _: Any) -> int:
         """Return 1 for any count operation."""
         return 1
 
     @property
-    def preferred_kind(self):
+    def preferred_kind(self) -> None:
         """Return None for preferred kind."""
         return None
 
 
-def get_phase_procs(use_legate: bool):
+def get_phase_procs(use_legate: bool) -> tuple[Any, Any]:
     """Get processor configurations for different phases of computation.
 
     Parameters
@@ -252,7 +267,9 @@ def get_phase_procs(use_legate: bool):
         return DummyScope(), DummyScope()
 
 
-def parse_common_args():
+def parse_common_args() -> tuple[
+    str, Timer, ModuleType, ModuleType, ModuleType, bool
+]:
     """Parse common command line arguments for example scripts.
 
     Returns
@@ -274,6 +291,8 @@ def parse_common_args():
     - "cupy": Uses cupy, cupyx.scipy.sparse, and cupyx.scipy.sparse.linalg
     - "scipy": Uses numpy, scipy.sparse, and scipy.sparse.linalg
     """
+    global np, sparse, linalg
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--package",
@@ -282,6 +301,8 @@ def parse_common_args():
         choices=["legate", "cupy", "scipy"],
     )
     args, _ = parser.parse_known_args()
+
+    timer: Timer
 
     if args.package == "legate":
         timer = LegateTimer()
@@ -306,9 +327,9 @@ def parse_common_args():
 
         use_legate = False
 
-    globals()["np"] = importlib.import_module(np_name)
-    globals()["sparse"] = importlib.import_module(sp_name)
-    globals()["linalg"] = importlib.import_module(lg_name)
+    np = importlib.import_module(np_name)
+    sparse = importlib.import_module(sp_name)
+    linalg = importlib.import_module(lg_name)
 
     return args.package, timer, np, sparse, linalg, use_legate
 
@@ -317,7 +338,9 @@ def parse_common_args():
 #
 # `diags` construct csr from dia array, while when from_diags=False
 # we construct csr arrya directly - might be slightly faster
-def banded_matrix(N, nnz_per_row, from_diags=False):
+def banded_matrix(
+    N: int, nnz_per_row: int, from_diags: bool = False
+) -> csr_array:
     """Construct a banded matrix with 1.0 as values.
 
     Parameters
@@ -375,7 +398,9 @@ def banded_matrix(N, nnz_per_row, from_diags=False):
 
         pred = np.arange(nnz_per_row - half_nnz, nnz_per_row + 1)
         post = np.flip(pred)
-        nnz_arr = np.concatenate((pred, np.ones(main_rows) * nnz_per_row, post))
+        nnz_arr = np.concatenate(
+            (pred, np.ones(main_rows) * nnz_per_row, post)
+        )
         row_offsets = np.zeros(N + 1).astype(sparse.coord_ty)
         row_offsets[1 : N + 1] = np.cumsum(nnz_arr)
         nnz = row_offsets[-1]
@@ -399,7 +424,12 @@ def banded_matrix(N, nnz_per_row, from_diags=False):
         )
 
 
-def stencil_grid(S, grid, dtype=None, format=None):
+def stencil_grid(
+    S: Any,
+    grid: tuple[int, int],
+    dtype: npt.dtype[Any] | None = None,
+    format: str | None = None,
+) -> csr_array:
     """Construct a sparse matrix resulting from a stencil
     discretization on rectilinear grids.
 
@@ -437,6 +467,8 @@ def stencil_grid(S, grid, dtype=None, format=None):
     >>> A = stencil_grid(S, (3, 3))
     >>> print(A.toarray())
     """
+    import numpy
+
     N_v = int(numpy.prod(grid))  # number of vertices in the mesh
     N_s = int((S != 0).sum(dtype=int))  # number of nonzero stencil entries
 
@@ -497,7 +529,7 @@ def stencil_grid(S, grid, dtype=None, format=None):
     return sparse.dia_array((data, diags), shape=(N_v, N_v)).tocsr()
 
 
-def poisson2D(N):
+def poisson2D(N: int) -> csr_array:
     """Construct the 2D Poisson matrix.
 
     Parameters
@@ -536,7 +568,9 @@ def poisson2D(N):
     diag_size = N * N - 1
     first = np.full((N - 1), -1.0)
     chunks = np.concatenate([np.zeros(1), first])
-    diag_a = np.concatenate([first, np.tile(chunks, (diag_size - (N - 1)) // N)])
+    diag_a = np.concatenate(
+        [first, np.tile(chunks, (diag_size - (N - 1)) // N)]
+    )
     diag_g = -1.0 * np.ones(N * (N - 1))
     diag_c = 4.0 * np.ones(N * N)
 
@@ -549,7 +583,7 @@ def poisson2D(N):
     return sparse.diags(diagonals, offsets, dtype=np.float64).tocsr()
 
 
-def diffusion2D(N, epsilon=1.0, theta=0.0):
+def diffusion2D(N: int, epsilon: float = 1.0, theta: float = 0.0) -> csr_array:
     """Construct a 2D diffusion matrix with anisotropy.
 
     Parameters

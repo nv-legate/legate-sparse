@@ -23,6 +23,9 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct CSRIndexingCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit CSRIndexingCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 

@@ -1,24 +1,24 @@
 {
-  "packages" : {
-    "legate" : {
-      "repo": "legate.internal",
-      "org": "nv-legate",
-      "version": "25.07.00",
-      "git_url" : "git@github.com:nv-legate/legate.git",
-      "git_shallow": false,
-      "always_download": false,
-      "git_tag" : "a46dc3d5b176ff9546bc831409c394c1bbc3b936",
-      "anaconda_label": "main"
-    },
-    "cupynumeric" : {
-      "repo": "cupynumeric.internal",
-      "org": "nv-legate",
-      "version": "25.07.00",
-      "git_url" : "git@github.com:nv-legate/cupynumeric",
-      "git_shallow": false,
-      "always_download": false,
-      "git_tag" : "6132d8450049a7abd7786fb4d60444eb5b4e25db",
-      "anaconda_label": "main"
+    "packages": {
+        "cupynumeric": {
+            "always_download": false,
+            "anaconda_label": "main",
+            "git_shallow": false,
+            "git_tag": "ae1c787828a9327ad00a076739706f41d196a043",
+            "git_url": "git@github.com:nv-legate/cupynumeric.internal",
+            "org": "nv-legate",
+            "repo": "cupynumeric.internal",
+            "version": "26.01.00"
+        },
+        "legate": {
+            "always_download": false,
+            "anaconda_label": "main",
+            "git_shallow": false,
+            "git_tag": "3ccb639605eecd8e9fee52c2d7d56ea799f4864e",
+            "git_url": "git@github.com:nv-legate/legate.internal.git",
+            "org": "nv-legate",
+            "repo": "legate.internal",
+            "version": "26.01.00"
+        }
     }
-  }
 }
