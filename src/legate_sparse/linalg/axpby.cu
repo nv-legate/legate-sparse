@@ -48,6 +48,9 @@ __global__ void axpby_kernel(size_t elems,
 
 template <Type::Code VAL_CODE, bool IS_ALPHA, bool NEGATE>
 struct AXPBYImplBody<VariantKind::GPU, VAL_CODE, IS_ALPHA, NEGATE> {
+  TaskContext context;
+  explicit AXPBYImplBody(TaskContext context) : context(context) {}
+
   using VAL_TY = type_of<VAL_CODE>;
 
   void operator()(const AccessorRW<VAL_TY, 1>& y,
@@ -58,7 +61,7 @@ struct AXPBYImplBody<VariantKind::GPU, VAL_CODE, IS_ALPHA, NEGATE> {
   {
     auto elems  = rect.volume();
     auto blocks = get_num_blocks_1d(elems);
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     axpby_kernel<VAL_TY, IS_ALPHA, NEGATE>
       <<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo[0], y, x, a, b);
     LEGATE_SPARSE_CHECK_CUDA_STREAM(stream);

@@ -14,7 +14,11 @@ import argparse
 import os
 import sys
 
-from memlog_analysis import export_to_csv, export_to_excel, visualize_allocations
+from memlog_analysis import (
+    export_to_csv,
+    export_to_excel,
+    visualize_allocations,
+)
 from memlog_parser import (
     filter_allocations,
     parse_memlog,
@@ -49,8 +53,12 @@ def check_dependencies(format: str) -> bool:
             import pandas  # noqa:  F401
             import seaborn  # noqa:  F401
         except ImportError:
-            print("Error: Visualization requires pandas, matplotlib, and seaborn.")
-            print("Please install them with: pip install pandas matplotlib seaborn")
+            print(
+                "Error: Visualization requires pandas, matplotlib, and seaborn."
+            )
+            print(
+                "Please install them with: pip install pandas matplotlib seaborn"
+            )
             return False
 
     return True

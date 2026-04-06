@@ -15,6 +15,7 @@
 import cupynumeric as np
 import numpy
 import pytest
+
 from legate_sparse.utils import sort_by_rows_then_cols
 
 

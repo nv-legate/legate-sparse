@@ -7,19 +7,14 @@
   {# We need to have a default value for the initial pass over the recipe #}
   {% set gpu_enabled_bool = false %}
 {% endif %}
-{% if upload_build == "true" %}
-  {% set upload_build_bool = true %}
-{% elif upload_build == "false" %}
-  {% set upload_build_bool = false %}
-{% else %}
-  {# We need to have a default value for the initial pass over the recipe #}
-  {% set upload_build_bool = false %}
-{% endif %}
 ## The placeholder version is strictly for making two-pass conda build process.
 ## It should not be used for any other purpose, and this is not a default version.
 {% set placeholder_version = '0.0.0.dev' %}
-{% set default_cuda_version = '12.2.2' %}
-{% set cuda_version='.'.join(environ.get('CUDA', default_cuda_version).split('.')[:2]) %}
+{% set legate_cuda_version = environ.get('LEGATE_CUDA_VERSION') %}
+{% if not legate_cuda_version %}
+invalid_yaml_missing_cuda_version: LEGATE_CUDA_VERSION must be set
+{% endif %}
+{% set cuda_version='.'.join(legate_cuda_version.split('.')[:2]) %}
 {% set cuda_major=cuda_version.split('.')[0]|int %}
 {% set py_version=environ.get('CONDA_PY', '') %}
 
@@ -68,9 +63,9 @@ build:
 
 ## Create legate/cupynumeric version and build string
 {% set legate_version = os.environ.get("LEGATE_VERSION", "1.0.0") %}
-{% set legate_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, os.environ.get("LEGATE_BUILDSTR", ""), cpu_gpu_tag]) %}
+{% set legate_buildstr = "_".join(["py" ~ py_version, "*" ~ cpu_gpu_tag.strip('_'), os.environ.get("LEGATE_BUILDSTR", "") ]) %}
 {% set cupynumeric_version = os.environ.get("CUPYNUMERIC_VERSION", "1.0.0") %}
-{% set cupynumeric_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, os.environ.get("CUPYNUMERIC_BUILDSTR", ""), cpu_gpu_tag]) %}
+{% set cupynumeric_buildstr = "_".join(["cuda" ~ cuda_major, "py" ~ py_version, cpu_gpu_tag, os.environ.get("CUPYNUMERIC_BUILDSTR", "")]) %}
 
 {% if use_local_path is not defined %}
 # use git hash
@@ -108,14 +103,16 @@ requirements:
     - make
     - ninja
     - cmake {{ cmake_version }}
-    - {{ compiler('c') }} =11.2
-    - {{ compiler('cxx') }} =11.2
-    # the nvcc requirement is necessary because it contains crt/host_config.h used by cuda runtime. This is a packaging bug that has been reported.
-    - cuda-nvcc
-    # cudart needed for CPU and GPU builds because of curand
-    - cuda-cudart-dev
+    - {{ stdlib("c") }}
+    - {{ compiler('c') }} =14
+    - {{ compiler('cxx') }} =14
+    - pkg-config
+{% if gpu_enabled_bool %}
     - cuda-version ={{ cuda_version }}
+    - {{ compiler('cuda') }}
+    - cuda-cudart-dev
     - libcusparse-dev
+{% endif %}
 
 
   host:
@@ -126,7 +123,7 @@ requirements:
     #- libcurand-dev
     - openblas =* =*openmp*
     - llvm-openmp
-    - legate ={{ legate_version }}={{ legate_buildstr }}
+    - legate ={{ legate_version }}=*{{ legate_buildstr }}
     - cupynumeric ={{ cupynumeric_version }}={{ cupynumeric_buildstr }}
 {% if gpu_enabled_bool %}
     # cupynumeric could be only in the run section and we could have just legate
@@ -135,22 +132,25 @@ requirements:
     # legate, there may not be a cupynumeric package that is compatible.  So, we
     # list cupynumeric here to get a pair of legate and cupynumeric that are
     # compatible.
+    - cuda-version ={{ cuda_version }}
     - cuda-cccl
     - libcusparse
-    - cuda-version ={{ cuda_version }}
+    - libcudss-dev
+    - nccl <2.29
     - cuda-cudart
-    - nccl
 {% endif %}
 
   run:
     - numpy {{ numpy_version }}
     - scipy
     - openblas =* =*openmp*
-    - legate ={{ legate_version }}={{ legate_buildstr }}
     - cupynumeric ={{ cupynumeric_version }}={{ cupynumeric_buildstr }}
 {% if gpu_enabled_bool %}
     - libnvjitlink
     - libcusparse
+    # ship the NCCL comm layer so multi-GPU cudss runs can load libcudss_commlayer_nccl.so
+    - libcudss-commlayer-nccl
+    - nccl >=2.0,<2.29
     # Pin to all minor versions of CUDA newer than the one built against, within the same major version.
     # cuda-version constrains the CUDA runtime version and ensures a compatible driver is available
     - {{ pin_compatible('cuda-version', min_pin='x.x', max_pin='x') }}

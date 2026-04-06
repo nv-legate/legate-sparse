@@ -31,6 +31,9 @@ struct CSRSpMVRowSplitImplBody;
 
 template <VariantKind KIND>
 struct CSRSpMVRowSplitImpl {
+  TaskContext context;
+  explicit CSRSpMVRowSplitImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(CSRSpMVRowSplitArgs& args) const
   {
@@ -48,7 +51,7 @@ struct CSRSpMVRowSplitImpl {
       return;
     }
 
-    CSRSpMVRowSplitImplBody<KIND, INDEX_CODE, VAL_CODE>()(
+    CSRSpMVRowSplitImplBody<KIND, INDEX_CODE, VAL_CODE>{context}(
       y, A_pos, A_crd, A_vals, x, args.y.shape<1>());
   }
 };
@@ -60,7 +63,7 @@ static void csr_spmv_row_split_template(TaskContext context)
   CSRSpMVRowSplitArgs args{context.outputs()[0], inputs[0], inputs[1], inputs[2], inputs[3]};
 
   index_type_value_type_dispatch(
-    args.A_crd.code(), args.y.code(), CSRSpMVRowSplitImpl<KIND>{}, args);
+    args.A_crd.code(), args.y.code(), CSRSpMVRowSplitImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

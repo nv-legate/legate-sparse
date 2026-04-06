@@ -32,7 +32,8 @@ struct SpGEMMCSRxCSRxCSRNNZArgs {
 
 class SpGEMMCSRxCSRxCSRNNZ : public SparseTask<SpGEMMCSRxCSRxCSRNNZ> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_NNZ};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_NNZ}};
 
   static constexpr legate::VariantOptions CPU_VARIANT_OPTIONS =
     legate::VariantOptions{}.with_has_allocations(true);
@@ -60,7 +61,8 @@ struct SpGEMMCSRxCSRxCSRArgs {
 
 class SpGEMMCSRxCSRxCSR : public SparseTask<SpGEMMCSRxCSRxCSR> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR}};
 
   static constexpr legate::VariantOptions CPU_VARIANT_OPTIONS =
     legate::VariantOptions{}.with_has_allocations(true);
@@ -94,7 +96,8 @@ struct SpGEMMCSRxCSRxCSRGPUArgs {
 // we take a different approach than on CPUs and OMPs.
 class SpGEMMCSRxCSRxCSRGPU : public SparseTask<SpGEMMCSRxCSRxCSRGPU> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_GPU};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_SPGEMM_CSR_CSR_CSR_GPU}};
 
   static constexpr legate::VariantOptions GPU_VARIANT_OPTIONS =
     legate::VariantOptions{}.with_has_allocations(true);

@@ -29,7 +29,8 @@ struct DenseToCSRNNZArgs {
 
 class DenseToCSRNNZ : public SparseTask<DenseToCSRNNZ> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_DENSE_TO_CSR_NNZ};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_DENSE_TO_CSR_NNZ}};
   static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
   static void omp_variant(legate::TaskContext ctx);
@@ -48,7 +49,8 @@ struct DenseToCSRArgs {
 
 class DenseToCSR : public SparseTask<DenseToCSR> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_DENSE_TO_CSR};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_DENSE_TO_CSR}};
   static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
   static void omp_variant(legate::TaskContext ctx);

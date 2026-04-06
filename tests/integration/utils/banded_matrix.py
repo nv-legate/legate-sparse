@@ -24,22 +24,51 @@ def banded_matrix(
     init_with_ones: bool = True,
     verbose: bool = False,
 ):
-    """
+    """Create a banded sparse matrix for testing purposes.
+
     Parameters
     ----------
-    N: int
-        Size of the NxN sparse matrix
-    nnz_per_row: int
-        Number of non-zero elements per row (odd number)
-    from_diags: bool
-        use sparse.diags to generate the banded matrix (default = True)
-    init_with_ones: bool
-        Initialize the matrix with ones instead of arange
+    N : int
+        Size of the NxN sparse matrix.
+    nnz_per_row : int
+        Number of non-zero elements per row (must be odd).
+    from_diags : bool, optional
+        Use sparse.diags to generate the banded matrix. Default is True.
+    init_with_ones : bool, optional
+        Initialize the matrix with ones instead of arange. Default is True.
+    verbose : bool, optional
+        Print detailed information about the matrix construction. Default is False.
 
     Returns
     -------
-    csr_array:
-        Return a sparse matrix
+    csr_array
+        A banded sparse matrix in CSR format.
+
+    Raises
+    ------
+    AssertionError
+        If N <= nnz_per_row or nnz_per_row is not odd.
+
+    Notes
+    -----
+    This function creates a banded matrix with a specific sparsity pattern.
+    When from_diags=True, it uses the sparse.diags function which is simpler
+    but may be slower. When from_diags=False, it constructs the CSR matrix
+    directly for better performance.
+
+    The matrix has a banded structure with nnz_per_row non-zeros per row,
+    centered around the main diagonal. The function handles the boundary
+    conditions by masking out-of-bounds indices.
+
+    Examples
+    --------
+    >>> A = banded_matrix(5, 3, from_diags=True)
+    >>> print(A.toarray())
+    [[1. 1. 0. 0. 0.]
+     [1. 1. 1. 0. 0.]
+     [0. 1. 1. 1. 0.]
+     [0. 0. 1. 1. 1.]
+     [0. 0. 0. 1. 1.]]
     """
 
     if from_diags:
@@ -61,7 +90,9 @@ def banded_matrix(
 
         pred = np.arange(nnz_per_row - half_nnz, nnz_per_row + 1)
         post = np.flip(pred)
-        nnz_arr = np.concatenate((pred, np.ones(main_rows) * nnz_per_row, post))
+        nnz_arr = np.concatenate(
+            (pred, np.ones(main_rows) * nnz_per_row, post)
+        )
 
         if sparse.__name__ == "legate_sparse":
             row_offsets = np.zeros(N + 1).astype(sparse.coord_ty)

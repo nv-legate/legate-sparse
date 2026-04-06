@@ -66,17 +66,31 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
-import cupynumeric
-import numpy
+import cupynumeric as cn
+import numpy as np
 
+from .csr import csr_array
 from .dia import dia_array
 
+if TYPE_CHECKING:
+    from typing import Any, Sequence
 
-def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
-    """
-    Construct a sparse matrix from diagonals.
+    import numpy.typing as npt
+
+
+def diags(
+    diagonals: Sequence[cn.ndarray],
+    offsets: Sequence[int] | int = 0,
+    shape: tuple[int, ...] | None = None,
+    format: str | None = None,
+    dtype: npt.dtype[Any] | None = None,
+) -> csr_array | dia_array:
+    """Construct a sparse matrix from diagonals.
+
     Parameters
     ----------
     diagonals : sequence of array_like
@@ -90,66 +104,94 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
     shape : tuple of int, optional
         Shape of the result. If omitted, a square matrix large enough
         to contain the diagonals is returned.
-    format : {"dia", "csr", "csc", "lil", ...}, optional
-        Matrix format of the result. By default (format=None) an
-        appropriate sparse matrix format is returned. This choice is
-        subject to change.
+    format : {"dia", "csr"}, optional
+        Matrix format of the result. By default (format=None) a DIA
+        matrix is returned. Currently only "dia" and "csr" are supported.
     dtype : dtype, optional
-        Data type of the matrix.
+        Data type of the matrix. Must be specified.
+
+    Returns
+    -------
+    sparse matrix
+        A sparse matrix in the specified format with the given diagonals.
+
+    Raises
+    ------
+    ValueError
+        If the number of diagonals and offsets don't match, or if
+        diagonal lengths don't agree with matrix size.
+    NotImplementedError
+        If dtype is not specified or format is not supported.
+
     See Also
     --------
     spdiags : construct matrix from diagonals
+
     Notes
     -----
     This function differs from `spdiags` in the way it handles
     off-diagonals.
+
     The result from `diags` is the sparse equivalent of::
         np.diag(diagonals[0], offsets[0])
         + ...
         + np.diag(diagonals[k], offsets[k])
+
     Repeated diagonal offsets are disallowed.
-    .. versionadded:: 0.11
+
+    Differences from SciPy:
+        - Uses cupynumeric arrays instead of numpy arrays
+        - dtype parameter is required (cannot be None)
+        - Limited format support (only "dia" and "csr")
+        - Primarily used for matrix generation in examples
+
     Examples
     --------
-    >>> from scipy.sparse import diags
+    >>> import cupynumeric as np
+    >>> from legate_sparse import diags
     >>> diagonals = [[1, 2, 3, 4], [1, 2, 3], [1, 2]]
-    >>> diags(diagonals, [0, -1, 2]).toarray()
+    >>> diags(diagonals, [0, -1, 2], dtype=np.float64).todense()
     array([[1, 0, 1, 0],
            [1, 2, 0, 2],
            [0, 2, 3, 0],
            [0, 0, 3, 4]])
+
     Broadcasting of scalars is supported (but shape needs to be
     specified):
-    >>> diags([1, -2, 1], [-1, 0, 1], shape=(4, 4)).toarray()
+    >>> diags([1, -2, 1], [-1, 0, 1], shape=(4, 4), dtype=np.float64).todense()
     array([[-2.,  1.,  0.,  0.],
            [ 1., -2.,  1.,  0.],
            [ 0.,  1., -2.,  1.],
            [ 0.,  0.,  1., -2.]])
+
     If only one diagonal is wanted (as in `numpy.diag`), the following
     works as well:
-    >>> diags([1, 2, 3], 1).toarray()
+    >>> diags([1, 2, 3], 1, dtype=np.float64).todense()
     array([[ 0.,  1.,  0.,  0.],
            [ 0.,  0.,  2.,  0.],
            [ 0.,  0.,  0.,  3.],
            [ 0.,  0.,  0.,  0.]])
     """
     # if offsets is not a sequence, assume that there's only one diagonal
-    if numpy.isscalar(offsets):
+    diags: list[cn.ndarray]
+    if np.isscalar(offsets):
         # now check that there's actually only one diagonal
-        if len(diagonals) == 0 or numpy.isscalar(diagonals[0]):
-            diagonals = [cupynumeric.atleast_1d(diagonals)]
+        if len(diagonals) == 0 or np.isscalar(diagonals[0]):
+            diags = [cn.atleast_1d(diagonals)]  # type: ignore [list-item, arg-type]
         else:
             raise ValueError("Different number of diagonals and offsets.")
     else:
-        diagonals = list(map(cupynumeric.atleast_1d, diagonals))
+        diags = cn.atleast_1d(*diagonals)  # type: ignore [assignment]
+
+    assert not isinstance(offsets, int)
 
     # Basic check
-    if len(diagonals) != len(offsets):
+    if len(diags) != len(offsets):
         raise ValueError("Different number of diagonals and offsets.")
 
     # Determine shape, if omitted
     if shape is None:
-        m = len(diagonals[0]) + abs(int(offsets[0]))
+        m = len(diags[0]) + abs(int(offsets[0]))
         shape = (m, m)
 
     # Determine data type, if omitted
@@ -162,34 +204,38 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
     # Construct data array
     m, n = shape
 
-    M = max([min(m + offset, n - offset) + max(0, offset) for offset in offsets])
+    M = max(
+        [min(m + offset, n - offset) + max(0, offset) for offset in offsets]
+    )
     M = max(0, M)
-    data_arr = cupynumeric.zeros((len(offsets), M), dtype=dtype)
+    data_arr = cn.zeros((len(offsets), M), dtype=dtype)
 
     K = min(m, n)
 
-    for j, diagonal in enumerate(diagonals):
+    for j, diag in enumerate(diags):
         offset = int(offsets[j])
         k = max(0, offset)
         length = min(m + offset, n - offset, K)
         if length < 0:
-            raise ValueError("Offset %d (index %d) out of bounds" % (offset, j))
+            raise ValueError(
+                "Offset %d (index %d) out of bounds" % (offset, j)
+            )
         try:
-            data_arr[j, k : k + length] = diagonal[..., :length]
+            data_arr[j, k : k + length] = diag[..., :length]
         except ValueError as e:
-            if len(diagonal) != length and len(diagonal) != 1:
+            if len(diag) != length and len(diag) != 1:
                 raise ValueError(
                     "Diagonal length (index %d: %d at offset %d) does not "
                     "agree with matrix size (%d, %d)."
-                    % (j, len(diagonal), offset, m, n)
+                    % (j, len(diag), offset, m, n)
                 ) from e
             raise
 
     # We importantly don't perform this conversion to cupynumeric (involving
     # an attach operation) until we're done indexing into the list. This
     # avoid a cupynumeric crash involving restrictions in attach in pde.py.
-    offsets = cupynumeric.atleast_1d(offsets)
-    dia = dia_array((data_arr, offsets), shape=(m, n), dtype=dtype)
+    offsets_array: cn.ndarray = cn.atleast_1d(offsets)  # type: ignore [arg-type, assignment]
+    dia = dia_array((data_arr, offsets_array), shape=(m, n), dtype=dtype)
     if format == "csr":
         return dia.tocsr()
     return dia

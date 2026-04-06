@@ -41,10 +41,10 @@ __global__ void cast_and_offset(size_t elems, DST* dst, const SRC* src, int64_t 
   dst[idx] = static_cast<DST>(src[idx] - offset);
 }
 
-int64_t local_offset_from_nnz(ncclComm_t comm, coord_t task_id, coord_t task_num, int64_t A_nnz)
+int64_t local_offset_from_nnz(
+  ncclComm_t comm, coord_t task_id, coord_t task_num, int64_t A_nnz, cudaStream_t stream)
 {
   ThrustAllocator alloc(Memory::GPU_FB_MEM);
-  auto stream         = get_cached_stream();
   auto policy         = thrust::cuda::par(alloc).on(stream);
   auto buf            = CREATE_BUFFER(int64_t, task_num, Memory::GPU_FB_MEM, "nnz_reduce_buf");
   auto nnz_reduce_buf = buf.ptr(0);
@@ -67,6 +67,9 @@ int64_t local_offset_from_nnz(ncclComm_t comm, coord_t task_id, coord_t task_num
 }
 
 struct SpGEMMCSRxCSRxCSRGPUImpl {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRGPUImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(SpGEMMCSRxCSRxCSRGPUArgs& args, coord_t task_id, coord_t task_size) const
   {
@@ -106,7 +109,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
 
     // Get context sensitive objects.
     auto handle = get_cusparse();
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     CHECK_CUSPARSE(cusparseSetStream(handle, stream));
 
     auto B_rows      = B_pos.domain().get_volume();
@@ -331,7 +334,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
         //@TODO (marsaev): we don't really need nccl comm here
         // latency for 1 int and host comm should be much better
         ncclComm_t* comm = args.comms[0].get<ncclComm_t*>();
-        offset_nnz       = local_offset_from_nnz(*comm, task_id, task_num, A_nnz);
+        offset_nnz       = local_offset_from_nnz(*comm, task_id, task_num, A_nnz, stream);
       }
 
       // Convert the A_indptr array into a pos array.
@@ -472,7 +475,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
         //@TODO (marsaev): we don't really need nccl comm here
         // latency for 1 int and host comm should be much better
         ncclComm_t* comm = args.comms[0].get<ncclComm_t*>();
-        offset_nnz       = local_offset_from_nnz(*comm, task_id, task_num, A_nnz);
+        offset_nnz       = local_offset_from_nnz(*comm, task_id, task_num, A_nnz, stream);
       }
 
       // Convert the A_indptr array into a pos array.
@@ -524,7 +527,7 @@ struct SpGEMMCSRxCSRxCSRGPUImpl {
                                 context.communicators()};
   index_type_floating_point_value_type_dispatch(args.A_crd.code(),
                                                 args.A_vals.code(),
-                                                SpGEMMCSRxCSRxCSRGPUImpl{},
+                                                SpGEMMCSRxCSRxCSRGPUImpl{context},
                                                 args,
                                                 context.get_task_index()[0],
                                                 context.get_launch_domain().hi()[0]);

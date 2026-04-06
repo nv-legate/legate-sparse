@@ -60,7 +60,7 @@ include(rapids-find)
 ###################################
 # Project
 
-set(legate_sparse_version 25.03.00)
+set(legate_sparse_version 26.02.00)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CUDA_FLAGS_DEBUG "-O0 -g")
@@ -110,4 +110,3 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
   endfunction()
   add_touch_legate_sparse_ninja_build_target()
 endif()
-

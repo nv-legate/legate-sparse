@@ -14,7 +14,12 @@
 #
 from __future__ import annotations
 
-from legate.util.settings import PrioritizedSetting, Settings, convert_bool
+from legate.util.settings import (
+    PrioritizedSetting,
+    Settings,
+    convert_bool,
+    convert_str,
+)
 
 __all__ = ("settings",)
 
@@ -29,6 +34,16 @@ class SparseRuntimeSettings(Settings):
         Switch to faster CUSPARSE_SPGEMM_ALG1, which, however, use
         significantly more FB memory. It will be used by default when cusparse<12.1,
         where memory-restricted SpGEMM was introduced.
+        """,
+    )
+
+    cudss_commnccl_loc: PrioritizedSetting[bool] = PrioritizedSetting(
+        "cudss-comm-lib",
+        "CUDSS_COMM_LIB",
+        default="",
+        convert=convert_str,
+        help="""
+        For multi-gpu runs, set CUDSS_COMM_LIB env to /path/to/libcudss_commlayer_nccl.so
         """,
     )
 

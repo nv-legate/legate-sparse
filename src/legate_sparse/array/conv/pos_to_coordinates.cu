@@ -44,13 +44,16 @@ __global__ void fill_row_indices(size_t rows,
 
 template <Type::Code INDEX_CODE>
 struct ExpandPosToCoordinatesImplBody<VariantKind::GPU, INDEX_CODE> {
+  TaskContext context;
+  explicit ExpandPosToCoordinatesImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorRO<Rect<1>, 1>& pos,
                   const AccessorWO<INDEX_TY, 1>& row_indices,
                   const Rect<1>& rect)
   {
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     auto blocks = get_num_blocks_1d(rect.volume());
     size_t rows = rect.volume();
 

@@ -11,15 +11,49 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import argparse
 import importlib
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
-import numpy
-from typing_extensions import Protocol
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    import numpy.typing as npt
+    from legate.timing._lib.timing import PyTime
+    from legate_sparse import csr_array
+
+np: ModuleType
+sparse: ModuleType
+linalg: ModuleType
 
 
-def get_arg_number(arg):
+def get_arg_number(arg: str) -> int:
+    """Parse a string argument that may contain size suffixes.
+
+    Parameters
+    ----------
+    arg : str
+        String argument that may end with 'k', 'm', or 'g' for
+        kilobytes, megabytes, or gigabytes respectively.
+
+    Returns
+    -------
+    int
+        The parsed number with appropriate multiplier applied.
+
+    Examples
+    --------
+    >>> get_arg_number("1024")
+    1024
+    >>> get_arg_number("1k")
+    1024
+    >>> get_arg_number("1m")
+    1048576
+    >>> get_arg_number("1g")
+    1073741824
+    """
     multiplier = 1
     arg = arg.lower()
     if len(arg) == 0:
@@ -38,64 +72,105 @@ def get_arg_number(arg):
 
 
 class Timer(Protocol):
-    def start(self):
+    """Protocol for timer implementations.
+
+    This protocol defines the interface that timer classes must implement
+    for measuring execution time in the examples.
+    """
+
+    def start(self) -> None:
+        """Start timing."""
         ...
 
-    def stop(self):
-        """
-        Blocks execution until everything before it has completed. Returns the
-        duration since the last call to start(), in milliseconds.
+    def stop(self) -> float:
+        """Stop timing and return duration.
+
+        Blocks execution until everything before it has completed.
+
+        Returns
+        -------
+        float
+            Duration since the last call to start(), in milliseconds.
         """
         ...
 
 
 class LegateTimer(Timer):
-    def __init__(self):
-        self._start = None
+    """Timer implementation using Legate's timing facilities.
 
-    def start(self):
+    This timer uses Legate's internal timing mechanism for accurate
+    measurement of GPU operations.
+    """
+
+    def __init__(self) -> None:
+        self._start: PyTime | None = None
+
+    def start(self) -> None:
+        """Start timing using Legate's time function."""
         from legate.timing import time
 
         self._start = time()
 
-    # returns time in milliseconds
-    def stop(self):
+    def stop(self) -> float:
+        """Stop timing and return duration in milliseconds."""
         from legate.timing import time
+
+        assert self._start is not None
 
         _end = time()
         return (_end - self._start) / 1000.0
 
 
 class CuPyTimer(Timer):
-    def __init__(self):
-        self._start_event = None
+    """Timer implementation using CuPy's CUDA events.
 
-    def start(self):
-        from cupy import cuda
+    This timer uses CUDA events for accurate measurement of GPU operations
+    in CuPy applications.
+    """
+
+    def __init__(self) -> None:
+        self._start_event: Any | None = None
+
+    def start(self) -> None:
+        """Start timing using CUDA events."""
+        from cupy import cuda  # type: ignore [import-untyped]
 
         self._start_event = cuda.Event()
         self._start_event.record()
 
-    def stop(self):
+    def stop(self) -> float:
+        """Stop timing and return duration in milliseconds."""
         from cupy import cuda
+
+        assert self._start_event is not None
 
         end_event = cuda.Event()
         end_event.record()
         end_event.synchronize()
-        return cuda.get_elapsed_time(self._start_event, end_event)
+        return cast(float, cuda.get_elapsed_time(self._start_event, end_event))
 
 
 class NumPyTimer(Timer):
-    def __init__(self):
-        self._start_time = None
+    """Timer implementation using Python's high-resolution timer.
 
-    def start(self):
+    This timer uses Python's perf_counter_ns for accurate measurement
+    of CPU operations in NumPy/SciPy applications.
+    """
+
+    def __init__(self) -> None:
+        self._start_time: float | None = None
+
+    def start(self) -> None:
+        """Start timing using perf_counter_ns."""
         from time import perf_counter_ns
 
         self._start_time = perf_counter_ns() / 1000.0
 
-    def stop(self):
+    def stop(self) -> float:
+        """Stop timing and return duration in milliseconds."""
         from time import perf_counter_ns
+
+        assert self._start_time is not None
 
         end_time = perf_counter_ns() / 1000.0
         return (end_time - self._start_time) / 1000.0
@@ -105,27 +180,60 @@ class NumPyTimer(Timer):
 # manager so that we can run both CuPy and SciPy
 # programs with resource scoping.
 class DummyScope:
-    def __init__(self):
+    """No-op context manager for resource scoping.
+
+    This class provides a dummy context manager that does nothing,
+    allowing the same code to run with both CuPy and SciPy programs
+    that may or may not use resource scoping.
+    """
+
+    def __init__(self) -> None: ...
+
+    def __enter__(self) -> None:
+        """Enter the context (no-op)."""
         ...
 
-    def __enter__(self):
+    def __exit__(self, _: Any, __: Any, ___: Any) -> None:
+        """Exit the context (no-op)."""
         ...
 
-    def __exit__(self, _, __, ___):
-        ...
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: Any) -> DummyScope:
+        """Return self for any indexing (no-op)."""
         return self
 
-    def count(self, _):
+    def count(self, _: Any) -> int:
+        """Return 1 for any count operation."""
         return 1
 
     @property
-    def preferred_kind(self):
+    def preferred_kind(self) -> None:
+        """Return None for preferred kind."""
         return None
 
 
-def get_phase_procs(use_legate: bool):
+def get_phase_procs(use_legate: bool) -> tuple[Any, Any]:
+    """Get processor configurations for different phases of computation.
+
+    Parameters
+    ----------
+    use_legate : bool
+        Whether to use Legate-specific processor configuration.
+
+    Returns
+    -------
+    tuple
+        (build_procs, solve_procs) - processor configurations for
+        build and solve phases respectively.
+
+    Notes
+    -----
+    When use_legate is True, this function queries the available
+    processors and assigns them to different phases:
+    - Build phase: Prefers CPUs, then OpenMP processors, then GPUs
+    - Solve phase: Prefers GPUs, then OpenMP processors, then CPUs
+
+    When use_legate is False, returns DummyScope objects.
+    """
     if use_legate:
         from legate.core import TaskTarget, get_machine
 
@@ -159,7 +267,32 @@ def get_phase_procs(use_legate: bool):
         return DummyScope(), DummyScope()
 
 
-def parse_common_args():
+def parse_common_args() -> tuple[
+    str, Timer, ModuleType, ModuleType, ModuleType, bool
+]:
+    """Parse common command line arguments for example scripts.
+
+    Returns
+    -------
+    tuple
+        (package, timer, np, sparse, linalg, use_legate) where:
+        - package: str - the selected package ("legate", "cupy", or "scipy")
+        - timer: Timer - appropriate timer implementation
+        - np: module - numpy/cupy/cupynumeric module
+        - sparse: module - sparse matrix module
+        - linalg: module - linear algebra module
+        - use_legate: bool - whether Legate is being used
+
+    Notes
+    -----
+    This function sets up the global environment with the appropriate
+    modules based on the --package argument. It supports:
+    - "legate": Uses cupynumeric, legate_sparse, and legate_sparse.linalg
+    - "cupy": Uses cupy, cupyx.scipy.sparse, and cupyx.scipy.sparse.linalg
+    - "scipy": Uses numpy, scipy.sparse, and scipy.sparse.linalg
+    """
+    global np, sparse, linalg
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--package",
@@ -168,6 +301,8 @@ def parse_common_args():
         choices=["legate", "cupy", "scipy"],
     )
     args, _ = parser.parse_known_args()
+
+    timer: Timer
 
     if args.package == "legate":
         timer = LegateTimer()
@@ -192,9 +327,9 @@ def parse_common_args():
 
         use_legate = False
 
-    globals()["np"] = importlib.import_module(np_name)
-    globals()["sparse"] = importlib.import_module(sp_name)
-    globals()["linalg"] = importlib.import_module(lg_name)
+    np = importlib.import_module(np_name)
+    sparse = importlib.import_module(sp_name)
+    linalg = importlib.import_module(lg_name)
 
     return args.package, timer, np, sparse, linalg, use_legate
 
@@ -203,7 +338,47 @@ def parse_common_args():
 #
 # `diags` construct csr from dia array, while when from_diags=False
 # we construct csr arrya directly - might be slightly faster
-def banded_matrix(N, nnz_per_row, from_diags=False):
+def banded_matrix(
+    N: int, nnz_per_row: int, from_diags: bool = False
+) -> csr_array:
+    """Construct a banded matrix with 1.0 as values.
+
+    Parameters
+    ----------
+    N : int
+        Size of the square matrix (N x N).
+    nnz_per_row : int
+        Number of non-zeros per row. Must be odd.
+    from_diags : bool, optional
+        If True, construct using sparse.diags then convert to CSR.
+        If False, construct CSR array directly. Default is False.
+
+    Returns
+    -------
+    sparse matrix
+        A banded matrix in CSR format with 1.0 values.
+
+    Raises
+    ------
+    AssertionError
+        If N <= nnz_per_row or nnz_per_row is not odd.
+
+    Notes
+    -----
+    The matrix has a banded structure with nnz_per_row non-zeros per row,
+    centered around the main diagonal. The direct CSR construction method
+    (from_diags=False) may be slightly faster than the diags method.
+
+    Examples
+    --------
+    >>> A = banded_matrix(5, 3)
+    >>> print(A.toarray())
+    [[1. 1. 0. 0. 0.]
+     [1. 1. 1. 0. 0.]
+     [0. 1. 1. 1. 0.]
+     [0. 0. 1. 1. 1.]
+     [0. 0. 0. 1. 1.]]
+    """
     if from_diags:
         return sparse.diags(
             [1] * nnz_per_row,
@@ -223,7 +398,9 @@ def banded_matrix(N, nnz_per_row, from_diags=False):
 
         pred = np.arange(nnz_per_row - half_nnz, nnz_per_row + 1)
         post = np.flip(pred)
-        nnz_arr = np.concatenate((pred, np.ones(main_rows) * nnz_per_row, post))
+        nnz_arr = np.concatenate(
+            (pred, np.ones(main_rows) * nnz_per_row, post)
+        )
         row_offsets = np.zeros(N + 1).astype(sparse.coord_ty)
         row_offsets[1 : N + 1] = np.cumsum(nnz_arr)
         nnz = row_offsets[-1]
@@ -247,7 +424,51 @@ def banded_matrix(N, nnz_per_row, from_diags=False):
         )
 
 
-def stencil_grid(S, grid, dtype=None, format=None):
+def stencil_grid(
+    S: Any,
+    grid: tuple[int, int],
+    dtype: npt.dtype[Any] | None = None,
+    format: str | None = None,
+) -> csr_array:
+    """Construct a sparse matrix resulting from a stencil
+    discretization on rectilinear grids.
+
+    Parameters
+    ----------
+    S : array_like
+        The stencil array defining the pattern of connections.
+    grid : tuple
+        Grid dimensions (e.g., (N, N) for 2D grid).
+    dtype : dtype, optional
+        Data type of the matrix. If None, uses S.dtype.
+    format : str, optional
+        Output format. If None, returns CSR format.
+
+    Returns
+    -------
+    sparse matrix
+        A sparse matrix in CSR format representing the stencil on the grid.
+
+    Notes
+    -----
+    This function constructs a sparse matrix that represents the application
+    of a stencil operator on a regular grid. The stencil defines the pattern
+    of connections between grid points.
+
+    The function handles:
+    - Boundary conditions by zeroing connections outside the grid
+    - Duplicate diagonals by summing their contributions
+    - Conversion to CSR format for efficient operations
+
+    Examples
+    --------
+    >>> # 5-point stencil for 2D grid
+    >>> S = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
+    >>> A = stencil_grid(S, (3, 3))
+    >>> print(A.toarray())
+    """
+    import numpy
+
     N_v = int(numpy.prod(grid))  # number of vertices in the mesh
     N_s = int((S != 0).sum(dtype=int))  # number of nonzero stencil entries
 
@@ -308,11 +529,48 @@ def stencil_grid(S, grid, dtype=None, format=None):
     return sparse.dia_array((data, diags), shape=(N_v, N_v)).tocsr()
 
 
-def poisson2D(N):
+def poisson2D(N: int) -> csr_array:
+    """Construct the 2D Poisson matrix.
+
+    Parameters
+    ----------
+    N : int
+        Grid size (N x N grid).
+
+    Returns
+    -------
+    sparse matrix
+        The 2D Poisson matrix in CSR format.
+
+    Notes
+    -----
+    This constructs the standard 5-point stencil discretization of
+    the 2D Poisson equation -u_xx - u_yy = f on an N x N grid.
+
+    The matrix has the following structure:
+    - Main diagonal: 4.0
+    - Off-diagonals: -1.0 for horizontal and vertical connections
+
+    Examples
+    --------
+    >>> A = poisson2D(3)
+    >>> print(A.toarray())
+    [[ 4. -1.  0. -1.  0.  0.  0.  0.  0.]
+     [-1.  4. -1.  0. -1.  0.  0.  0.  0.]
+     [ 0. -1.  4.  0.  0. -1.  0.  0.  0.]
+     [-1.  0.  0.  4. -1.  0. -1.  0.  0.]
+     [ 0. -1.  0. -1.  4. -1.  0. -1.  0.]
+     [ 0.  0. -1.  0. -1.  4.  0.  0. -1.]
+     [ 0.  0.  0. -1.  0.  0.  4. -1.  0.]
+     [ 0.  0.  0.  0. -1.  0. -1.  4. -1.]
+     [ 0.  0.  0.  0.  0. -1.  0. -1.  4.]]
+    """
     diag_size = N * N - 1
     first = np.full((N - 1), -1.0)
     chunks = np.concatenate([np.zeros(1), first])
-    diag_a = np.concatenate([first, np.tile(chunks, (diag_size - (N - 1)) // N)])
+    diag_a = np.concatenate(
+        [first, np.tile(chunks, (diag_size - (N - 1)) // N)]
+    )
     diag_g = -1.0 * np.ones(N * (N - 1))
     diag_c = 4.0 * np.ones(N * N)
 
@@ -325,7 +583,38 @@ def poisson2D(N):
     return sparse.diags(diagonals, offsets, dtype=np.float64).tocsr()
 
 
-def diffusion2D(N, epsilon=1.0, theta=0.0):
+def diffusion2D(N: int, epsilon: float = 1.0, theta: float = 0.0) -> csr_array:
+    """Construct a 2D diffusion matrix with anisotropy.
+
+    Parameters
+    ----------
+    N : int
+        Grid size (N x N grid).
+    epsilon : float, optional
+        Anisotropy parameter. Default is 1.0 (isotropic).
+    theta : float, optional
+        Rotation angle in radians. Default is 0.0.
+
+    Returns
+    -------
+    sparse matrix
+        The 2D diffusion matrix in CSR format.
+
+    Notes
+    -----
+    This constructs a 9-point stencil for the anisotropic diffusion equation:
+    -div(K * grad(u)) = f
+
+    where K is a diffusion tensor that depends on epsilon and theta.
+    The stencil coefficients are computed based on the rotated diffusion tensor.
+
+    Examples
+    --------
+    >>> # Isotropic diffusion
+    >>> A = diffusion2D(3, epsilon=1.0, theta=0.0)
+    >>> # Anisotropic diffusion
+    >>> A = diffusion2D(3, epsilon=0.1, theta=np.pi/4)
+    """
     eps = float(epsilon)  # for brevity
     theta = float(theta)
 

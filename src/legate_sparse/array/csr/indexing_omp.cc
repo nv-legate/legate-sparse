@@ -23,6 +23,9 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct CSRIndexingCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit CSRIndexingCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 
@@ -34,7 +37,6 @@ struct CSRIndexingCSRImplBody<VariantKind::OMP, INDEX_CODE, VAL_CODE> {
                   const AccessorRO<VAL_TY, 1>& value,
                   const Rect<1>& rect)
   {
-    std::cout << "OMP variant" << std::endl;
 #pragma omp parallel for
     for (size_t row = rect.lo[0]; row < rect.hi[0] + 1; row++) {
       size_t j_pos_start = A_pos[row].lo;

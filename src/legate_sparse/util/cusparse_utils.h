@@ -14,9 +14,12 @@
  *
  */
 
+#pragma once
+
 #include "legate_sparse/sparse.h"
 #include "legate_sparse/util/cuda_help.h"
 #include "legate_sparse/util/legate_utils.h"
+#include <legate/redop/redop.h>
 
 namespace sparse {
 
@@ -75,8 +78,7 @@ void* getPtrFromStore(const legate::PhysicalStore& store)
   } else if (!store.is_writable() && store.is_readable()) {
     return const_cast<T*>(store.read_accessor<T, DIM>().ptr(dom.lo()));
   } else if (store.is_reducible()) {
-    return store.reduce_accessor<Legion::SumReduction<T>, true /* exclusive */, DIM>().ptr(
-      dom.lo());
+    return store.reduce_accessor<SumReduction<T>, true, DIM>().ptr(dom.lo());
   } else {
     assert(false);
     return nullptr;
@@ -100,13 +102,13 @@ inline cudaDataType cusparseDataType<double>()
 }
 
 template <>
-inline cudaDataType cusparseDataType<complex<float>>()
+inline cudaDataType cusparseDataType<legate::Complex<float>>()
 {
   return CUDA_C_32F;
 }
 
 template <>
-inline cudaDataType cusparseDataType<complex<double>>()
+inline cudaDataType cusparseDataType<legate::Complex<double>>()
 {
   return CUDA_C_64F;
 }
@@ -133,10 +135,10 @@ template <typename INDEX_TY = int64_t, typename VAL_TY = double>
 cusparseSpMatDescr_t makeCuSparseCSR(const legate::PhysicalStore& pos,
                                      const legate::PhysicalStore& crd,
                                      const legate::PhysicalStore& vals,
-                                     size_t cols)
+                                     size_t cols,
+                                     cudaStream_t stream)
 {
   cusparseSpMatDescr_t matDescr;
-  auto stream = get_cached_stream();
 
   auto pos_domain = pos.domain();
   auto crd_domain = crd.domain();
@@ -169,10 +171,10 @@ template <typename INDEX_TY = int64_t, typename VAL_TY = double>
 cusparseSpMatDescr_t makeCuSparseCSC(const legate::PhysicalStore& pos,
                                      const legate::PhysicalStore& crd,
                                      const legate::PhysicalStore& vals,
-                                     size_t rows)
+                                     size_t rows,
+                                     cudaStream_t stream)
 {
   cusparseSpMatDescr_t matDescr;
-  auto stream = get_cached_stream();
 
   auto pos_domain = pos.domain();
   auto crd_domain = crd.domain();
@@ -237,7 +239,7 @@ cusparseDnMatDescr_t makeCuSparseDenseMat(const legate::PhysicalStore& mat)
     valsPtr  = const_cast<VAL_TY*>(acc.ptr(d.lo()));
     ld       = acc.accessor.strides[0] / sizeof(VAL_TY);
   } else if (mat.is_reducible()) {
-    auto acc = mat.reduce_accessor<Legion::SumReduction<VAL_TY>, true /* exclusive */, 2>();
+    auto acc = mat.reduce_accessor<SumReduction<VAL_TY>, true, 2>();
     valsPtr  = acc.ptr(d.lo());
     ld       = acc.accessor.strides[0] / sizeof(VAL_TY);
   } else {

@@ -27,6 +27,9 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE>
 struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRNNZImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorWO<nnz_ty, 1>& nnz,
@@ -94,6 +97,9 @@ struct SpGEMMCSRxCSRxCSRNNZImplBody<VariantKind::CPU, INDEX_CODE> {
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit SpGEMMCSRxCSRxCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 
@@ -177,12 +183,13 @@ struct SpGEMMCSRxCSRxCSRImplBody<VariantKind::CPU, INDEX_CODE, VAL_CODE> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void)
-{
+static const auto sparse_reg_task_ = []() -> char {
   SpGEMMCSRxCSRxCSRNNZ::register_variants();
   SpGEMMCSRxCSRxCSR::register_variants();
   SpGEMMCSRxCSRxCSRGPU::register_variants();
-}
+  return 0;
+}();
+
 }  // namespace
 
 }  // namespace sparse

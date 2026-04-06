@@ -32,6 +32,9 @@ struct DenseToCSRNNZImplBody;
 
 template <VariantKind KIND>
 struct DenseToCSRNNZImpl {
+  TaskContext context;
+  explicit DenseToCSRNNZImpl(TaskContext context) : context(context) {}
+
   template <Type::Code VAL_CODE>
   void operator()(DenseToCSRNNZArgs& args) const
   {
@@ -43,7 +46,7 @@ struct DenseToCSRNNZImpl {
     if (args.nnz.domain().empty()) {
       return;
     }
-    DenseToCSRNNZImplBody<KIND, VAL_CODE>()(nnz, B_vals, args.B_vals.shape<2>());
+    DenseToCSRNNZImplBody<KIND, VAL_CODE>{context}(nnz, B_vals, args.B_vals.shape<2>());
   }
 };
 
@@ -52,6 +55,9 @@ struct DenseToCSRImplBody;
 
 template <VariantKind KIND>
 struct DenseToCSRImpl {
+  TaskContext context;
+  explicit DenseToCSRImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(DenseToCSRArgs& args) const
   {
@@ -66,7 +72,7 @@ struct DenseToCSRImpl {
     if (args.A_pos.domain().empty()) {
       return;
     }
-    DenseToCSRImplBody<KIND, INDEX_CODE, VAL_CODE>()(
+    DenseToCSRImplBody<KIND, INDEX_CODE, VAL_CODE>{context}(
       A_pos, A_crd, A_vals, B_vals, args.B_vals.shape<2>());
   }
 };
@@ -78,7 +84,7 @@ static void dense_to_csr_nnz_template(TaskContext context)
     context.output(0),  // nnz_per_row
     context.input(0)    // B_vals
   };
-  value_type_dispatch(args.B_vals.code(), DenseToCSRNNZImpl<KIND>{}, args);
+  value_type_dispatch(args.B_vals.code(), DenseToCSRNNZImpl<KIND>{context}, args);
 }
 
 template <VariantKind KIND>
@@ -92,7 +98,7 @@ static void dense_to_csr_template(TaskContext context)
   };
 
   index_type_value_type_dispatch(
-    args.A_crd.code(), args.A_vals.code(), DenseToCSRImpl<KIND>{}, args);
+    args.A_crd.code(), args.A_vals.code(), DenseToCSRImpl<KIND>{context}, args);
 }
 
 }  // namespace sparse

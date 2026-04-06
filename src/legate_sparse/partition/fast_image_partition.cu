@@ -28,6 +28,9 @@ using namespace legate;
 
 template <Type::Code INDEX_CODE>
 struct FastImageRangeImplBody<VariantKind::GPU, INDEX_CODE> {
+  TaskContext context;
+  explicit FastImageRangeImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
 
   void operator()(const AccessorWO<Rect<1>, 1>& out_pos,
@@ -37,7 +40,7 @@ struct FastImageRangeImplBody<VariantKind::GPU, INDEX_CODE> {
                   const Rect<1>& bounds)
   {
     ThrustAllocator alloc(Memory::GPU_FB_MEM);
-    auto stream             = get_cached_stream();
+    auto stream             = context.get_task_stream();
     auto thrust_exec_policy = thrust::cuda::par(alloc).on(stream);
 
     thrust::pair<const INDEX_TY*, const INDEX_TY*> result = thrust::minmax_element(

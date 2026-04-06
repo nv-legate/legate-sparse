@@ -38,11 +38,14 @@ __global__ void scale_rect1_kernel(size_t elems,
 
 template <>
 struct ScaleRect1ImplBody<VariantKind::GPU> {
+  TaskContext context;
+  explicit ScaleRect1ImplBody(TaskContext context) : context(context) {}
+
   void operator()(const AccessorRW<Rect<1>, 1>& output, const int64_t scale, const Rect<1>& rect)
   {
     auto elems  = rect.volume();
     auto blocks = get_num_blocks_1d(elems);
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     scale_rect1_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(elems, rect.lo, output, scale);
     LEGATE_SPARSE_CHECK_CUDA_STREAM(stream);
   }

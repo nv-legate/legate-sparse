@@ -23,6 +23,9 @@ using namespace legate;
 
 template <Type::Code VAL_CODE, bool IS_ALPHA, bool NEGATE>
 struct AXPBYImplBody<VariantKind::CPU, VAL_CODE, IS_ALPHA, NEGATE> {
+  TaskContext context;
+  explicit AXPBYImplBody(TaskContext context) : context(context) {}
+
   using VAL_TY = type_of<VAL_CODE>;
 
   void operator()(const AccessorRW<VAL_TY, 1>& y,
@@ -52,7 +55,11 @@ struct AXPBYImplBody<VariantKind::CPU, VAL_CODE, IS_ALPHA, NEGATE> {
 
 namespace  // unnamed
 {
-static void __attribute__((constructor)) register_tasks(void) { AXPBY::register_variants(); }
+static const auto sparse_reg_task_ = []() -> char {
+  AXPBY::register_variants();
+  return 0;
+}();
+
 }  // namespace
 
 }  // namespace sparse

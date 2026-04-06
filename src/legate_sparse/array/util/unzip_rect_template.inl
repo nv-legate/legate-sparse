@@ -29,6 +29,9 @@ struct UnZipRect1ImplBody;
 
 template <VariantKind KIND>
 struct UnZipRect1Impl {
+  TaskContext context;
+  explicit UnZipRect1Impl(TaskContext context) : context(context) {}
+
   void operator()(UnZipRect1Args& args) const
   {
     auto out1 = args.out1.write_accessor<int64_t, 1>();
@@ -37,7 +40,7 @@ struct UnZipRect1Impl {
     if (args.in.domain().empty()) {
       return;
     }
-    UnZipRect1ImplBody<KIND>()(out1, out2, in, args.in.shape<1>());
+    UnZipRect1ImplBody<KIND>{context}(out1, out2, in, args.in.shape<1>());
   }
 };
 
@@ -46,7 +49,7 @@ static void unzip_rect_1_template(TaskContext context)
 {
   auto outputs = context.outputs();
   UnZipRect1Args args{outputs[0], outputs[1], context.inputs()[0]};
-  UnZipRect1Impl<KIND>{}(args);
+  UnZipRect1Impl<KIND>{context}(args);
 }
 
 }  // namespace sparse

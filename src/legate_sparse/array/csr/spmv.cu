@@ -29,6 +29,9 @@ namespace sparse {
 
 template <>
 struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
+  TaskContext context;
+  explicit CSRSpMVRowSplitImpl(TaskContext context) : context(context) {}
+
   template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
   void operator()(CSRSpMVRowSplitArgs& args) const
   {
@@ -48,7 +51,7 @@ struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
 
     // Get context sensitive objects.
     auto handle = get_cusparse();
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     CHECK_CUSPARSE(cusparseSetStream(handle, stream));
 
     // Older cusparse has bug when output vector is not aligned to 16 bytes
@@ -109,7 +112,7 @@ struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
     CHECK_CUSPARSE(cusparseCreateDnVec(
       &cusparse_y, y_domain_size /* size */, output_ptr, cusparseDataType<VAL_TY>()));
 
-    auto cusparse_A = makeCuSparseCSR<INDEX_TY, VAL_TY>(A_pos, A_crd, A_vals, cols);
+    auto cusparse_A = makeCuSparseCSR<INDEX_TY, VAL_TY>(A_pos, A_crd, A_vals, cols, stream);
 
     // Make the CUSPARSE calls.
     VAL_TY alpha   = 1.0;
@@ -153,7 +156,7 @@ struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
                                 workspacePtr));
     // if we used temporary buffer, copy result to output
     if (y_aligned) {
-      LEGATE_CHECK_CUDA(cudaMemcpyAsync(
+      LEGATE_SPARSE_CHECK_CUDA(cudaMemcpyAsync(
         y_raw_ptr, output_ptr, y_domain_size * sizeof(VAL_TY), cudaMemcpyDeviceToDevice, stream));
     }
     // Destroy the created objects.
@@ -170,7 +173,7 @@ struct CSRSpMVRowSplitImpl<VariantKind::GPU> {
   CSRSpMVRowSplitArgs args{context.outputs()[0], inputs[0], inputs[1], inputs[2], inputs[3]};
 
   index_type_floating_point_value_type_dispatch(
-    args.A_crd.code(), args.y.code(), CSRSpMVRowSplitImpl<VariantKind::GPU>{}, args);
+    args.A_crd.code(), args.y.code(), CSRSpMVRowSplitImpl<VariantKind::GPU>{context}, args);
 }
 
 }  // namespace sparse

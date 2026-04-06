@@ -32,7 +32,8 @@ struct CSRSpMVRowSplitArgs {
 
 class CSRSpMVRowSplit : public SparseTask<CSRSpMVRowSplit> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_CSR_SPMV_ROW_SPLIT};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_CSR_SPMV_ROW_SPLIT}};
 
   static constexpr legate::VariantOptions GPU_VARIANT_OPTIONS =
     legate::VariantOptions{}.with_has_allocations(true);

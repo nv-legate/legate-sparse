@@ -33,13 +33,16 @@ struct CUDALibraries {
  public:
   void finalize();
   cusparseHandle_t get_cusparse();
+  cudssHandle_t get_cudss();
 
  private:
   void finalize_cusparse();
+  void finalize_cudss();
 
  private:
   bool finalized_;
   cusparseHandle_t cusparse_;
+  cudssHandle_t cudss_;
 };
 
 }  // namespace sparse

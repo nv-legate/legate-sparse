@@ -30,7 +30,8 @@ struct ZipToRect1Args {
 
 class ZipToRect1 : public SparseTask<ZipToRect1> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_ZIP_TO_RECT_1};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_ZIP_TO_RECT_1}};
   static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
   static void omp_variant(legate::TaskContext ctx);

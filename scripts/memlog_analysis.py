@@ -16,10 +16,10 @@ Usage:
 
     # Parse the log file
     allocations = parse_memlog('memlog.txt')
-    
+
     # Export to CSV
     export_to_csv(allocations, 'memory_analysis.csv')
-    
+
     # Create visualizations (requires pandas, matplotlib, seaborn)
     visualize_allocations(allocations)
 """  # noqa: W293
@@ -116,7 +116,9 @@ def export_to_csv(
                 # If unique_mb_only is enabled, check for similar memory sizes
                 if unique_mb_only:
                     is_similar = any(
-                        are_similar_sizes(mb_size, seen_size, threshold_percent)
+                        are_similar_sizes(
+                            mb_size, seen_size, threshold_percent
+                        )
                         for seen_size in seen_mb_sizes
                     )
                     if is_similar:
@@ -145,7 +147,9 @@ def export_to_csv(
                 )
 
 
-def export_to_excel(allocations: List[BufferAllocation], output_file: str) -> bool:
+def export_to_excel(
+    allocations: List[BufferAllocation], output_file: str
+) -> bool:
     """
     Export memory allocation data to formatted Excel file.
 
@@ -299,7 +303,9 @@ def visualize_allocations(
     """
     if not all([PANDAS_AVAILABLE, MATPLOTLIB_AVAILABLE, SEABORN_AVAILABLE]):
         print("Error: Visualization requires pandas, matplotlib, and seaborn.")
-        print("Please install them with: pip install pandas matplotlib seaborn")
+        print(
+            "Please install them with: pip install pandas matplotlib seaborn"
+        )
         return False
 
     # Convert to DataFrame
@@ -360,7 +366,9 @@ def visualize_allocations(
     else:
         # Memory usage by description (top 10)
         plt.subplot(2, 2, 1)
-        top_descriptions = df.groupby("Description")["Size_MB"].sum().nlargest(10)
+        top_descriptions = (
+            df.groupby("Description")["Size_MB"].sum().nlargest(10)
+        )
         sns.barplot(x=top_descriptions.values, y=top_descriptions.index)
         plt.title("Top 10 Memory Usage by Description")
         plt.xlabel("Memory (MB)")
@@ -372,7 +380,9 @@ def visualize_allocations(
         plt.title("Memory Distribution by Type")
 
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/memory_analysis.png", dpi=300, bbox_inches="tight")
+    plt.savefig(
+        f"{output_dir}/memory_analysis.png", dpi=300, bbox_inches="tight"
+    )
     plt.close()
     return True
 
@@ -383,7 +393,9 @@ def main():
 
     from memlog_parser import parse_memlog
 
-    parser = argparse.ArgumentParser(description="Analyze memory allocation logs")
+    parser = argparse.ArgumentParser(
+        description="Analyze memory allocation logs"
+    )
     parser.add_argument("file", help="Path to the memory log file")
     parser.add_argument(
         "--output-dir", default=".", help="Directory to save output files"

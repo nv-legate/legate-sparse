@@ -14,15 +14,15 @@
 %-------------------------------------------------------------------------------
 % notes:
 % ------------------------------------------------------------------------------
-% Pajek network converted to sparse adjacency matrix for inclusion in UF sparse 
+% Pajek network converted to sparse adjacency matrix for inclusion in UF sparse
 % matrix collection, Tim Davis.  For Pajek datasets, See V. Batagelj & A. Mrvar,
-% http://vlado.fmf.uni-lj.si/pub/networks/data/.                                
+% http://vlado.fmf.uni-lj.si/pub/networks/data/.
 % ------------------------------------------------------------------------------
-%  Bill Cherowitzo: Graph and Digraph Glossary                                  
-%  http://www-math.cudenver.edu/~wcherowi/courses/m4408/glossary.html           
-%  Pajek's network: Barbara Zemlji"c, 2. nov 2003                               
-% The original problem had 3D xyz coordinates, but all values of z were equal   
-% to 0, and have been removed.  This graph has 2D coordinates.                  
+%  Bill Cherowitzo: Graph and Digraph Glossary
+%  http://www-math.cudenver.edu/~wcherowi/courses/m4408/glossary.html
+%  Pajek's network: Barbara Zemlji"c, 2. nov 2003
+% The original problem had 3D xyz coordinates, but all values of z were equal
+% to 0, and have been removed.  This graph has 2D coordinates.
 %-------------------------------------------------------------------------------
 72 72 122
 3 4

@@ -33,7 +33,8 @@ struct AXPBYArgs {
 
 class AXPBY : public SparseTask<AXPBY> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_AXPBY};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_AXPBY}};
   static void cpu_variant(legate::TaskContext ctx);
 #ifdef LEGATE_USE_OPENMP
   static void omp_variant(legate::TaskContext ctx);

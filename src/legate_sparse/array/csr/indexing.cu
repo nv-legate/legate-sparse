@@ -84,6 +84,9 @@ __global__ void csr_indexing_csr_kernel(const size_t num_rows,
 
 template <Type::Code INDEX_CODE, Type::Code VAL_CODE>
 struct CSRIndexingCSRImplBody<VariantKind::GPU, INDEX_CODE, VAL_CODE> {
+  TaskContext context;
+  explicit CSRIndexingCSRImplBody(TaskContext context) : context(context) {}
+
   using INDEX_TY = type_of<INDEX_CODE>;
   using VAL_TY   = type_of<VAL_CODE>;
 
@@ -98,9 +101,7 @@ struct CSRIndexingCSRImplBody<VariantKind::GPU, INDEX_CODE, VAL_CODE> {
     // Get the number of rows in the matrix
     size_t num_rows = rect.hi[0] - rect.lo[0] + 1;
 
-    std::cout << "GPU variant" << std::endl;
-
-    auto stream = get_cached_stream();
+    auto stream = context.get_task_stream();
     auto blocks = get_num_blocks_1d(rect.volume());
     csr_indexing_csr_kernel<INDEX_TY, VAL_TY><<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
       num_rows, A_pos, A_crd, A_vals, mask_pos, mask_crd, value);

@@ -12,15 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This example performs matrix power by repetitively multiplication. We assume
-# that the matrix is square, so the number of cols is same as the number of
-# rows in the matrix
+"""Sparse Matrix Power Microbenchmark.
+
+This script benchmarks sparse matrix power computation by performing repeated
+matrix multiplication (A^n) and measuring performance at each step. It supports:
+
+- Matrix generation with specified non-zeros per row or total non-zeros
+- Configurable number of matrix multiplications (power exponent)
+- Multiple backend support (Legate, CuPy, SciPy)
+
+Command line arguments:
+--nrows: Matrix size (supports k, m, g suffixes)
+--nnz-per-row: Number of non-zeros per row for generated matrix
+--nnz-total: Total number of non-zeros for generated matrix
+--k: Number of matrix multiplications to perform
+--nwarmups: Number of warmup iterations before timing
+--same-sparsity-for-cpu-and-gpu: Use NumPy for consistent sparsity patterns
+--random-seed: Random number seed for sparsity pattern generation
+--package: Backend to use (legate, cupy, scipy)
+"""
+
+from __future__ import annotations
 
 import argparse
 from functools import reduce
+from typing import TYPE_CHECKING
 
-import numpy.typing as npt
-from common import get_arg_number, parse_common_args
+from common import Timer, get_arg_number, parse_common_args
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    from legate_sparse import csr_array
 
 # global states random_seed, rng
 global random_seed, rng
@@ -30,18 +52,31 @@ global random_seed, rng
 # ----------------------------
 
 
-def create_csr_with_nnz_per_row(nrows, nnz_per_row: int, dtype: npt.DTypeLike = None):
-    """Return a CSR matrix with a prescribed number of nonzeros in each row.
+def create_csr_with_nnz_per_row(
+    nrows: int, nnz_per_row: int, dtype: npt.DTypeLike | None = None
+) -> csr_array:
+    """Create a CSR matrix with a prescribed number of nonzeros in each row.
 
-    Args:
-    ----
+    Parameters
+    ----------
+    nrows : int
+        Number of rows in the matrix. Number of columns is same as number of rows.
+    nnz_per_row : int
+        Desired number of nonzero entries in each row.
+    dtype : npt.DTypeLike, optional
+        Datatype of the values. Should be one of floating point datatypes.
+        Default is np.float32.
 
-    nrows: int
-        Number of rows in the matrix. Number of columns is same as number of rows
-    nnz_per_row: int
-        Desired number of nonzero entries in each row
-    dtype: npt.DTypeLike
-        Datatype of the values. This should be one of floating point datatypes
+    Returns
+    -------
+    sparse matrix
+        A CSR matrix with the specified sparsity pattern.
+
+    Notes
+    -----
+    This function creates a square matrix where each row has exactly
+    nnz_per_row non-zero entries. The column indices are randomly
+    generated and sorted within each row.
     """
     dtype = np.float32 if dtype is None else dtype
     ncols = nrows
@@ -57,26 +92,40 @@ def create_csr_with_nnz_per_row(nrows, nnz_per_row: int, dtype: npt.DTypeLike = 
     return matrix
 
 
-def create_csr_with_nnz_total(nrows, nnz_total, dtype: npt.DTypeLike = None):
-    """Return a CSR matrix with a prescribed number of nonzeros in the matrix.
+def create_csr_with_nnz_total(
+    nrows: int, nnz_total: int, dtype: npt.DTypeLike | None = None
+) -> csr_array:
+    """Create a CSR matrix with a prescribed total number of nonzeros.
 
-    Args:
-    ----
+    Parameters
+    ----------
+    nrows : int
+        Number of rows in the matrix. Number of columns is same as number of rows.
+    nnz_total : int
+        Desired total number of nonzero entries in the matrix.
+    dtype : npt.DTypeLike, optional
+        Datatype of the values. Should be one of floating point datatypes.
+        Default is np.float32.
 
-    nrows: int
-        Number of rows in the matrix. Number of columns is same as number of rows
-    nnz_total: int
-        Desired number of nonzero entries in the matrix with no expectation of
-        nonzeros in each row of the matrix
-    dtype: npt.DTypeLike
-        Datatype of the values. This should be one of floating point datatypes
+    Returns
+    -------
+    sparse matrix
+        A CSR matrix with the specified total number of non-zeros.
+
+    Notes
+    -----
+    This function creates a square matrix with exactly nnz_total non-zero
+    entries distributed randomly across the matrix. There is no guarantee
+    about the number of non-zeros per row.
     """
     dtype = np.float32 if dtype is None else dtype
     ncols = nrows
     coo_rows = rng.integers(0, nrows, nnz_total)
     coo_cols = rng.integers(0, ncols, nnz_total)
     vals = np.ones(nnz_total, dtype=dtype)
-    matrix = sparse.csr_matrix((vals, (coo_rows, coo_cols)), shape=(nrows, ncols))
+    matrix = sparse.csr_matrix(
+        (vals, (coo_rows, coo_cols)), shape=(nrows, ncols)
+    )
 
     return matrix
 
@@ -86,21 +135,32 @@ def create_csr_with_nnz_total(nrows, nnz_total, dtype: npt.DTypeLike = None):
 # ------------------------
 
 
-def compute_matrix_multiply_ntimes(A, timer, nwarmups: int = 2, ntimes: int = 4):
-    """Multiply matrix by self ntimes and print the time elapsed.
-    Args:
-    ----
+def compute_A_power_k(
+    A: csr_array, timer: Timer, nwarmups: int = 2, k: int = 4
+) -> None:
+    """Compute A^k and measure performance.
 
-    A: csr_matrix
-        The input matrix
-    timer:
-        Instance of the timer class to measure elapsed time
-    ntimes:
-        Number of matrix multiplies or the exponent in A^n
-    nwarmups:
-        Number of warmup iterations before
+    Parameters
+    ----------
+    A : sparse matrix
+        The input matrix to compute A^k.
+    timer : Timer
+        Timer instance to measure elapsed time.
+    nwarmups : int, optional
+        Number of warmup iterations before timing. Default is 2.
+    k : int, optional
+        Number of matrix multiplies or the exponent in A^k. Default is 4.
+
+    Notes
+    -----
+    This function computes A^k by repeated matrix multiplication
+    and measures the time for each step. It prints detailed timing
+    information including:
+    - Matrix dimensions and sparsity
+    - Time for each multiplication step
+    - Time for copying intermediate results
+    - Overall sparsity of the final result
     """
-
     timer.start()
     B = A.copy()
     elapsed_time_init_copy = timer.stop()
@@ -108,10 +168,10 @@ def compute_matrix_multiply_ntimes(A, timer, nwarmups: int = 2, ntimes: int = 4)
     for _ in range(nwarmups):
         output = A @ B
 
-    elapsed_time_spgemm = [-1.0] * ntimes
-    elapsed_time_copy = [-1.0] * ntimes
+    elapsed_time_spgemm = [-1.0] * k
+    elapsed_time_copy = [-1.0] * k
 
-    for hop in range(ntimes):
+    for hop in range(k):
         timer.start()
         output = A @ B
         elapsed_time_spgemm[hop] = timer.stop()
@@ -128,13 +188,15 @@ def compute_matrix_multiply_ntimes(A, timer, nwarmups: int = 2, ntimes: int = 4)
     print(f"NNZ of A                               : {A.nnz}")
     print(f"NNZ of output                          : {output.nnz}")
     print(f"Sparsity of output (%)                 : {sparsity_output}")
-    print(f"Total number of hops                   : {ntimes}")
+    print(f"Total number of hops                   : {k}")
     print(f"Elapsed time for copy in init (ms)     : {elapsed_time_init_copy}")
-    for hop in range(ntimes):
+    for hop in range(k):
         print(
             f"Elapsed time for spgemm for hop {hop} (ms) : {elapsed_time_spgemm[hop]}"
         )
-        print(f"Elapsed time for copy   for hop {hop} (ms) : {elapsed_time_copy[hop]}")
+        print(
+            f"Elapsed time for copy   for hop {hop} (ms) : {elapsed_time_copy[hop]}"
+        )
 
 
 if __name__ == "__main__":
@@ -168,10 +230,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--ntimes",
+        "--k",
         type=int,
         default=4,
-        dest="ntimes",
+        dest="k",
         help="Number of times A @ A is performed",
     )
 
@@ -197,14 +259,11 @@ if __name__ == "__main__":
     )
 
     args, _ = parser.parse_known_args()
-    _, timer, np, sparse, linalg, use_legate = parse_common_args()
+    package, timer, np, sparse, linalg, use_legate = parse_common_args()
 
     nrows = get_arg_number(args.nrows)
     nnz_total = get_arg_number(args.nnz_total)
 
-    # this is a global variable
-    global random_seed
-    global rng
     random_seed = args.random_seed
 
     if args.same_sparsity_for_cpu_and_gpu:
@@ -230,6 +289,8 @@ if __name__ == "__main__":
         print("Matrix created with number of nonzeros per row")
     elapsed_time_matrix_gen = timer.stop()
 
-    compute_matrix_multiply_ntimes(A, timer, int(args.nwarmups), int(args.ntimes))
+    compute_A_power_k(A, timer, int(args.nwarmups), int(args.k))
 
-    print(f"Elapsed time in matrix creation (ms)   : {elapsed_time_matrix_gen}")
+    print(
+        f"Elapsed time in matrix creation (ms)   : {elapsed_time_matrix_gen}"
+    )

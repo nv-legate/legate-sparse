@@ -24,7 +24,8 @@ namespace sparse {
 
 class UpcastFutureToRegion : public SparseTask<UpcastFutureToRegion> {
  public:
-  static constexpr auto TASK_ID = legate::LocalTaskID{LEGATE_SPARSE_UPCAST_FUTURE_TO_REGION};
+  static inline const auto TASK_CONFIG =
+    legate::TaskConfig{legate::LocalTaskID{LEGATE_SPARSE_UPCAST_FUTURE_TO_REGION}};
   static void cpu_variant(legate::TaskContext ctx);
 
  private:

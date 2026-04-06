@@ -33,18 +33,32 @@ COMPARISON_OPS = [
 @pytest.mark.parametrize("threshold", [0.3, 0.5])
 @pytest.mark.parametrize("op_name, op_func", COMPARISON_OPS)
 def test_comparison_operation(N, threshold, op_name, op_func):
-    """Test element-wise comparison operations on non-zero entries of the matrix
+    """Test element-wise comparison operations on non-zero entries of the matrix.
+
+    This test verifies that comparison operations work correctly on sparse
+    matrices by comparing results with dense matrix operations.
 
     Parameters
     ----------
     N : int
-        Size of the test matrix
+        Size of the test matrix.
     threshold : float
-        Value to compare against
+        Value to compare against.
     op_name : str
-        Name of the comparison operation
+        Name of the comparison operation.
     op_func : callable
-        The comparison function to test
+        The comparison function to test.
+
+    Notes
+    -----
+    The test creates a sparse matrix and applies a comparison operation
+    against a threshold value. It then compares the number of True values
+    in the sparse result with the dense result (considering only non-zero
+    elements).
+
+    This verifies that sparse comparison operations produce the same
+    logical result as dense operations when applied to non-zero elements.
+
     """
     A_dense, A_sparse, _ = simple_system_gen(N, N, sparse.csr_array, tol=0.7)
 
@@ -58,12 +72,30 @@ def test_comparison_operation(N, threshold, op_name, op_func):
 def test_comparison_error_cases(op_name, op_func):
     """Test error cases for comparison operations.
 
+    This test verifies that comparison operations properly handle invalid
+    input types by raising appropriate exceptions.
+
     Parameters
     ----------
     op_name : str
-        Name of the comparison operation
+        Name of the comparison operation.
     op_func : callable
-        The comparison function to test
+        The comparison function to test.
+
+    Notes
+    -----
+    The test attempts to compare a sparse matrix with various invalid
+    types including:
+    - 1D arrays
+    - 2D arrays
+    - Strings
+    - Lists
+
+    All of these should raise AssertionError since sparse matrix
+    comparison operations only support scalar values.
+
+    This ensures that the implementation properly validates input
+    types and provides clear error messages for unsupported operations.
     """
     N = 8
     _, A_sparse, _ = simple_system_gen(N, N, sparse.csr_array, tol=0.7)
