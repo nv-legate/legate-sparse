@@ -18,6 +18,12 @@ limitations under the License.
 
 # Legate Sparse
 
+> [!IMPORTANT]
+> Legate Sparse has reached end of life and is no longer maintained or
+> supported. The final public release is `v26.02.00`. No further releases,
+> fixes, or support are planned. Existing packages and documentation remain
+> available for historical reference.
+
 Legate Sparse is a [Legate](https://github.com/nv-legate/legate) library
 that aims to provide a distributed and accelerated drop-in replacement for the
 [scipy.sparse](https://docs.scipy.org/doc/scipy/reference/sparse.html) library
@@ -27,14 +33,11 @@ Legate Sparse interoperates with
 a distributed and accelerated drop-in replacement
 for [NumPy](https://numpy.org/doc/stable/reference/index.html#reference), to
 enable writing programs that operate on distributed dense and sparse arrays.
-Take a look at the `examples` directory for some applications that can
-use Legate Sparse. We have implemented
-an explicit partial-differential equation (PDE) [solver](examples/pde.py).
-More complex and interesting applications are on the way -- stay tuned!
+Take a look at the `examples` directory for applications that use Legate
+Sparse, including an explicit partial-differential equation (PDE)
+[solver](examples/pde.py).
 
-Legate Sparse is currently in alpha and supports a subset of APIs
-and options from scipy.sparse, so if you need an API, please open
-an issue and give us a summary of its usage.
+The final release supports a subset of APIs and options from scipy.sparse.
 
 # Installation
 
@@ -68,7 +71,7 @@ contains methods and types found in `scipy.sparse`. Note that the module is impo
 and not `legate.sparse`. Here is an example program saved as `main.py`.
 
 For more details on how to run legate programs, check
-our [documentation](https://docs.nvidia.com/cupynumeric).
+the retained [documentation](https://nv-legate.github.io/legate-sparse/).
 To run the application on a single GPU, use this command:
 
 `legate --gpus 1 ./main.py`
