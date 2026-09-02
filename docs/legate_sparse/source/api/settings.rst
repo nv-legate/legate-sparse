@@ -1,0 +1,8 @@
+Settings
+========
+
+Legate Sparse has runtime settings that can be configured through
+environment variables.
+
+.. settings:: settings
+    :module: legate_sparse.settings

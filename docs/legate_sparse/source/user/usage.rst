@@ -1,0 +1,107 @@
+.. _usage:
+
+Usage
+=====
+
+Since Legate Sparse is an aspiring drop-in replacement for SciPy Sparse,
+using Legate Sparse is similar to using SciPy Sparse.
+In most cases, you can replace SciPy Sparse with Legate Sparse
+by changing the import statement and execute the same program
+on multiple CPUs or GPUs.
+
+For instance, in the below example `main.py`, we create a
+sparse matrix and a dense vector, and perform a
+sparse matrix-vector multiplication (SpMv),
+where `legate_sparse` and `cupynumeric` are imported
+instead of `scipy.sparse` and `numpy` respectively.
+
+.. code-block:: python
+
+    import legate_sparse as sparse
+    import cupynumeric as np
+    from legate_sparse import csr_matrix
+
+    # 1. Create a sparse matrix
+    # Example: a 3x3 sparse matrix
+    # [[1, 0, 2],
+    #  [0, 3, 0],
+    #  [4, 0, 5]]
+    row_indices = np.array([0, 0, 1, 2, 2])
+    col_indices = np.array([0, 2, 1, 0, 2])
+    data = np.array([1, 2, 3, 4, 5])
+
+    sparse_matrix = csr_matrix((data, (row_indices, col_indices)), shape=(3, 3))
+
+    # 2. Create a dense vector
+    dense_vector = np.array([10, 20, 30])
+
+    # 3. Perform SpMV
+    # The result will be a dense array
+    result_vector = sparse_matrix.dot(dense_vector)
+
+    # 4. Print the result
+    print(result_vector)
+
+
+Users can specify the number of CPUs or GPUs and the amount of memory to use by
+passing relevant arguments in the Legate runtime as discussed in
+`Running Legate Programs`_.
+
+.. code-block:: sh
+
+    legate <optional-legate-args> main.py
+
+For instance, to run the program on a single GPU with
+10GB of memory, use the following command.
+
+.. code-block:: sh
+
+    legate --gpus 1 --fbmem 10000 main.py
+
+To run the same program on 2 GPUs with 10GB memory
+in each GPU, use the following command:
+
+.. code-block:: sh
+
+    legate --gpus 2 --fbmem 10000 main.py
+
+To run the program on 4 CPUs with 10GB of memory, use the following command.
+
+.. code-block:: sh
+
+    legate --cpus 4 --sysmem 10000 main.py
+
+Note that users are not required to pass these arguments to the Legate runtime.
+By default, Legate will choose whether to run on CPUs or GPUs and/or the
+number of GPUs or CPUs based on the available
+resources at runtime as indicated in the documentation.
+
+Users can also use canonical ``python`` interpreter to run Legate Sparse programs,
+as shown below.
+
+.. code-block:: sh
+
+    python main.py
+
+By default this invocation will use all the hardware resources (e.g. CPU cores,
+RAM, GPUs) available on the current machine.
+
+For more information on controlling the resource allocation, running on multiple
+nodes etc. see
+`Running Legate Programs`_.
+
+To run using single-threaded libraries like `NumPy`_ and `SciPy`_, replace the import statements from
+
+.. code-block:: python
+
+    import legate_sparse as sparse
+    import cupynumeric as np
+    from legate_sparse import csr_matrix
+
+to
+
+.. code-block:: python
+
+    import scipy.sparse as sparse
+    import numpy as np
+    from scipy.sparse import csr_matrix
