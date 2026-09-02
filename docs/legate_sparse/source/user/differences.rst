@@ -1,0 +1,7 @@
+Differences with scipy.sparse
+=============================
+
+While Legate Sparse is an aspiring drop-in replacement for
+SciPy Sparse, there are some differences in the APIs.
+Some APIs may not support all the arguments that SciPy Sparse does.
+Please see the API reference documentation for more details.
