@@ -17,10 +17,8 @@ any changes to their code.
 
 .. note::
 
-  Legate Sparse is currently in alpha and supports a subset of APIs
-  and options from scipy.sparse, so if you need an API, please open
-  an issue and give us a summary of its usage. We currently
-  support CSR and DIA formats for sparse matrices.
+  The final release supports a subset of APIs and options from
+  scipy.sparse. CSR and DIA formats are supported for sparse matrices.
 
 .. toctree::
   :maxdepth: 1
